@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <!-- 共用導覽列的容器 -->
+    <div id="header-placeholder"></div>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>功能二：從食材生成食譜</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="LOGIN.css">
+</head>
+<body>
+    <main class="main-content container feature-container">
+        <!-- 頁面一：上傳食材 -->
+        <div id="page1" class="page active">
+            <h1>從食材生成食譜</h1>
+            <div class="image-upload-container">
+                <p>請上傳或拍攝食材照片 (最多3樣)</p>
+                <input type="file" id="image-input" accept="image/*" multiple style="display: none;">
+                <button onclick="document.getElementById('image-input').click();" class="btn btn-primary">上傳照片</button>
+                <button id="camera-btn" class="btn btn-info text-white">手機拍照</button>
+                <video id="camera-video" playsinline autoplay style="display:none; width: 100%; border-radius: 5px; margin-top: 10px;"></video>
+                <div id="image-previews-container"></div>
+                <canvas id="camera-canvas" style="display:none;"></canvas>
+            </div>
+            <button id="next-btn" class="btn btn-primary mt-3" disabled>下一步</button>
+        </div>
+
+        <!-- 頁面二：選擇偏好 -->
+        <div id="page2" class="page">
+            <h1>選擇您的飲食偏好</h1>
+            <div class="form-group">
+                <label for="diet-type">飲食類型</label>
+                <select id="diet-type" class="form-select">
+                    <option value="不限">不限</option>
+                    <option value="素食">素食</option>
+                    <option value="純素">純素</option>
+                    <option value="低碳">低碳</option>
+                </select>
+            </div>
+             <div class="form-group">
+                <label for="main-course">主食</label>
+                <select id="main-course" class="form-select">
+                    <option value="不限">不限</option>
+                    <option value="牛">牛</option>
+                    <option value="雞">雞</option>
+                    <option value="豬">豬</option>
+                    <option value="鴨">鴨</option>
+                    <option value="魚">魚</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="flavor">風味</label>
+                <select id="flavor" class="form-select">
+                    <option value="不限">不限</option>
+                    <option value="中式">中式</option>
+                    <option value="日式">日式</option>
+                    <option value="西式">西式</option>
+                    <option value="韓式">韓式</option>
+                    <option value="東南亞風味">東南亞風味</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="difficulty">烹飪難度</label>
+                <select id="difficulty" class="form-select">
+                    <option value="不限">不限</option>
+                    <option value="簡單">簡單 (15分鐘內)</option>
+                    <option value="中等">中等 (30分鐘內)</option>
+                    <option value="困難">困難 (60分鐘以上)</option>
+                </select>
+            </div>
+             <div class="form-group">
+                <label for="servings">份量</label>
+                <select id="servings" class="form-select">
+                    <option value="1人份">1人份</option>
+                    <option value="2人份" selected>2人份</option>
+                    <option value="4人份">4人份</option>
+                </select>
+            </div>
+            <button id="submit-btn" class="btn btn-primary">生成食譜</button>
+        </div>
+
+        <!-- 頁面三：結果 -->
+        <div id="page3" class="page">
+            <h2 id="dish-name" class="mb-4"></h2>
+            <div class="mb-4">
+                <h4 class="mb-2"><i class="fa-solid fa-carrot me-2 text-warning"></i>精選食材</h4>
+                <ul id="ingredients-list" class="list-group"></ul>
+            </div>
+            <div class="mb-4">
+                <h4 class="mb-2"><i class="fa-solid fa-kitchen-set me-2 text-primary"></i>烹飪之旅</h4>
+                <ol id="steps-list" class="list-group list-group-numbered"></ol>
+            </div>
+            <div class="mb-3" style="margin-top: 20px;">
+                <label for="refine-input">不滿意嗎？告訴 AI 如何修改 (例如：換成雞肉、不要加辣)</label>
+                <textarea id="refine-input" rows="2" class="form-control"></textarea>
+                <button id="refine-btn" class="btn btn-info text-white mt-2">請 AI 修改</button>
+            </div>
+            <div class="button-group">
+                <button id="save-btn" class="btn btn-success">儲存食譜</button>
+                <button onclick="location.reload()" class="btn btn-secondary">再次分析</button>
+                <a href="login.html" class="btn btn-outline-secondary">返回功能選單</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading 覆蓋層 -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3">AI 正在生成食譜，請稍候...</p>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 專案設定檔 (包含 GAS URL) -->
+    <script src="config.js"></script>
+    <!-- 載入合併後的共用 JS -->
+    <script src="app.js"></script>
+    <script>
+        const page1 = document.getElementById('page1');
+        const page2 = document.getElementById('page2');
+        const page3 = document.getElementById('page3');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        const imageInput = document.getElementById('image-input');
+        const previewsContainer = document.getElementById('image-previews-container');
+        const nextBtn = document.getElementById('next-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const saveBtn = document.getElementById('save-btn');
+
+        const cameraBtn = document.getElementById('camera-btn');
+        const video = document.getElementById('camera-video');
+        const canvas = document.getElementById('camera-canvas');
+        const refineBtn = document.getElementById('refine-btn');
+
+        let images = []; // { base64, mimeType, id }
+        let recipeData = null;
+        let refineCount = 0; // 用於計算修改次數
+        let currentUserIdName = null;
+
+        imageInput.addEventListener('change', (event) => {
+            const files = event.target.files;
+            if (images.length + files.length > 3) {
+                alert('食材不可超過三樣');
+                return;
+            }
+            for (const file of files) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const id = 'img-' + Date.now() + Math.random();
+                    const parts = e.target.result.split(',');
+                    const mimeTypePart = parts[0].match(/:(.*?);/);
+                    images.push({
+                        id: id,
+                        base64: parts[1],
+                        mimeType: mimeTypePart ? mimeTypePart[1] : 'image/jpeg'
+                    });
+                    renderPreviews();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+         cameraBtn.addEventListener('click', async () => {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+                    video.onloadedmetadata = () => {
+                        // 點擊影片即可拍照
+                        video.addEventListener('click', () => {
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            canvas.getContext('2d').drawImage(video, 0, 0);
+                            const dataUrl = canvas.toDataURL('image/jpeg');
+                            const id = 'img-' + Date.now() + Math.random();
+                            const parts = dataUrl.split(',');
+                            const mimeTypePart = parts[0].match(/:(.*?);/);
+                            if (images.length < 3) {
+                                images.push({
+                                    id: id,
+                                    base64: parts[1],
+                                    mimeType: mimeTypePart ? mimeTypePart[1] : 'image/jpeg'
+                                });
+                                renderPreviews();
+                            } else { alert('食材不可超過三樣'); }
+
+                            // 停止攝影機
+                            stream.getTracks().forEach(track => track.stop());
+                            video.style.display = 'none';
+                        });
+                    };
+                } catch (err) {
+                    alert('無法啟動相機：' + err);
+                }
+            } else {
+                alert('您的瀏覽器不支援相機功能。');
+            }
+        });
+
+        function renderPreviews() {
+            previewsContainer.innerHTML = '';
+            images.forEach(img => {
+                const dataUrl = `data:${img.mimeType};base64,${img.base64}`;
+                previewsContainer.insertAdjacentHTML('beforeend', `
+                    <div class="preview-item">
+                        <img src="${dataUrl}" />
+                        <span class="delete-icon" onclick="deleteImage('${img.id}')">×</span>
+                    </div>
+                `);
+            });
+            nextBtn.disabled = images.length === 0;
+        }
+
+        function deleteImage(id) {
+            images = images.filter(img => img.id !== id);
+            renderPreviews();
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (images.length === 0) {
+                alert('請至少上傳一樣食材。');
+                return;
+            }
+            showPage('page2');
+        });
+
+        submitBtn.addEventListener('click', () => callApiAndDisplay(false));
+        refineBtn.addEventListener('click', () => callApiAndDisplay(true));
+
+        async function callApiAndDisplay(isRefine) {
+            loadingOverlay.style.display = 'flex';
+
+            if (isRefine && refineCount >= 2) {
+                alert('您已達到 2 次修改上限。');
+                refineBtn.disabled = true;
+                loadingOverlay.style.display = 'none';
+                return;
+            }
+
+            let prompt;
+            if (isRefine) {
+                const refineRequest = document.getElementById('refine-input').value;
+                if (!refineRequest) {
+                    alert('請輸入修改需求。');
+                    loadingOverlay.style.display = 'none';
+                    return;
+                }
+                prompt = `你是一位專業的廚師。基於以下的食譜，請根據使用者的要求進行修改。
+                原始食譜:
+                菜名: ${recipeData.dishName}
+                食材: ${JSON.stringify(recipeData.ingredients)}
+                步驟: ${JSON.stringify(recipeData.instructions)}
+                
+                使用者要求: "${refineRequest}"
+                
+                請以繁體中文提供修改後的新食譜，並嚴格按照以下 JSON 格式回傳，不要有任何額外的文字或解釋：
+                {
+                  "dishName": "新菜餚名稱",
+                  "ingredients": [{"name": "食材", "quantity": "份量"}],
+                  "instructions": ["第一個步驟的文字說明", "第二個步驟的文字說明"]
+                }`;
+            } else {
+                const diet = document.getElementById('diet-type').value;
+                const mainCourse = document.getElementById('main-course').value;
+                const flavor = document.getElementById('flavor').value;
+                const difficulty = document.getElementById('difficulty').value;
+                const servings = document.getElementById('servings').value;
+
+                prompt = `你是一位專業的廚師。請根據我上傳的食材圖片，並結合以下飲食偏好，為我設計一道菜。
+                飲食偏好:
+                - 飲食類型: ${diet}
+                - 主食: ${mainCourse}
+                - 風味: ${flavor}
+                - 烹飪難度: ${difficulty}
+                - 份量: ${servings}
+                請辨識圖片中的主要食材，並以此為基礎，建議一道菜的菜名、所有需要的食材（包含份量）及詳細烹飪步驟。請以繁體中文回復。請嚴格按照以下 JSON 格式回傳，不要有任何額外的文字或解釋：
+                {
+                  "dishName": "建議的菜餚名稱",
+                  "ingredients": [
+                    {"name": "食材A", "quantity": "份量A"},
+                    {"name": "食材B", "quantity": "份量B"}
+                  ],
+                  "instructions": [
+                    "第一個步驟的文字說明",
+                    "第二個步驟的文字說明"
+                  ]
+                }`;
+            }
+
+            const payload = {
+                prompt: prompt,
+                imageData: isRefine ? null : images.map(img => ({ base64: img.base64, mimeType: img.mimeType })),
+                id_name: currentUserIdName
+            };
+
+            const result = await callGasApi(isRefine ? 'refineRecipe' : 'createFromIngredients', payload, 'AI 正在生成食譜...');
+            if (result) {
+                if (isRefine) refineCount++;
+                recipeData = result.data;
+                recipeData.idName = 'recipe-' + Date.now();
+                displayResults(recipeData);
+                showPage('page3');
+            }
+        }
+
+        function displayResults(data) {
+            document.getElementById('dish-name').textContent = data.dishName;
+            const numerals = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二', '十三', '十四', '十五'];
+            const ingredientsList = document.getElementById('ingredients-list');
+            ingredientsList.innerHTML = data.ingredients.map(item => `<li class="list-group-item">${item.name} - ${item.quantity}</li>`).join('');
+            const stepsList = document.getElementById('steps-list'); // 確保 ID 正確
+            stepsList.innerHTML = data.instructions.map(step => `<li class="list-group-item">${step.replace(/^\d+\.\s*/, '')}</li>`).join('');
+            document.getElementById('refine-input').value = ''; // 清空修改輸入框
+        }
+
+        saveBtn.addEventListener('click', async () => {
+            if (!recipeData || !currentUserIdName) {
+                alert('沒有食譜資料或無法識別使用者身份，無法儲存。');
+                return;
+            }
+
+            const payload = {
+                payload: {
+                    id_name: currentUserIdName,
+                    source: '食材上傳',
+                    dishName: recipeData.dishName,
+                    ingredients: recipeData.ingredients,
+                    instructions: recipeData.instructions
+                }
+            };
+
+            // 使用共用的 callGasApi 函式，並傳入自訂的讀取文字
+            const result = await callGasApi('saveRecipeToSheet', payload, '正在為您儲存食譜...');
+            if (result) {
+                alert('食譜已成功儲存！');
+            }
+        });
+
+        // 頁面切換函式 (與 login.html 保持一致)
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        // 覆寫 app.js 中的 initializeCommonFeatures，加入此頁面的特定邏輯
+        function initializePageSpecificFeatures() {
+            const loggedInUser = localStorage.getItem('loggedInUser');
+            if (!loggedInUser) {
+                alert('無法識別使用者身份，將返回登入頁面。');
+                window.location.href = 'login.html';
+            } else {
+                currentUserIdName = JSON.parse(loggedInUser).idName;
+            }
+        }
+
+        // 確保在 app.js 之後執行
+        document.addEventListener('DOMContentLoaded', initializePageSpecificFeatures);
+    </script>
+</body>
+</html>

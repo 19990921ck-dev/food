@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用者系統</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="LOGIN.css">
+</head>
+<body>
+
+    <!-- 共用導覽列的容器 -->
+    <div id="header-placeholder"></div>
+
+    <!-- 登入/註冊時的置中容器 -->
+    <div id="auth-container" class="auth-container">
+        <div class="container" style="max-width: 450px;">
+            <div class="p-4">
+                <!-- 登入頁面 -->
+                <div id="login-page" class="page active">
+                    <div class="text-center mb-4">
+                        <i class="fa-solid fa-utensils fa-3x text-primary"></i>
+                        <h2 class="mt-2 mb-0">智慧餐廚</h2>
+                        <p class="text-muted">登入您的帳號</p>
+                    </div>
+                    <div id="login-error" class="alert alert-danger" style="display: none;"></div>
+                    <form id="login-form">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                            <input type="text" id="login-id-name" class="form-control" name="id_name" placeholder="登入帳號 (ID NAME)" required>
+                        </div>
+                        <div class="input-group mb-4">
+                            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                            <input type="password" id="login-pw" class="form-control" name="pw" placeholder="密碼 (PW)" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 btn-lg">登入</button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <a href="#" onclick="showPage('register-page')">還沒有帳號？前往註冊</a>
+                    </div>
+                     <div class="text-center mt-2">
+                        <a href="#" class="small">忘記密碼？</a>
+                    </div>
+                </div>
+
+                <!-- 註冊頁面 -->
+                <div id="register-page" class="page">
+                    <div class="text-center mb-4">
+                        <i class="fa-solid fa-user-plus fa-3x text-primary"></i>
+                        <h2 class="mt-2 mb-0">建立新帳號</h2>
+                        <p class="text-muted">只需幾個步驟即可加入</p>
+                    </div>
+                    <div id="register-error" class="alert alert-danger" style="display: none;"></div>
+                    <form id="register-form">
+                        <div class="mb-3">
+                            <input type="text" id="register-id-name" class="form-control" name="id_name" required maxlength="12" pattern="[A-Za-z]+" placeholder="登入帳號 (ID NAME)">
+                            <div class="form-text input-hint">只能使用英文，區分大小寫，上限12個字。</div>
+                        </div>
+                        <div class="mb-3">
+                            <input type="text" id="register-username" class="form-control" name="username" placeholder="希望系統如何稱呼您 (USERNAME)" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="password" id="register-pw" class="form-control" name="pw" placeholder="密碼 (PW)" required>
+                            <div class="form-text input-hint">長度至少8碼，且必須包含大小寫英文字母及數字。</div>
+                        </div>
+                        <div class="mb-3">
+                            <input type="password" id="register-pw-confirm" class="form-control" placeholder="確認密碼" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 btn-lg">註冊</button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <a href="#" onclick="showPage('login-page')">已經有帳號了？前往登入</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登入後的主要內容區域 -->
+    <main id="main-content" class="main-content" style="display: none;">
+        <!-- 飲食忌口頁面 -->
+         <div id="style-page" class="page">
+            <p class="text-muted">請選擇您偏好的料理風味：</p>
+            <div id="style-error" class="alert alert-danger" style="display: none;"></div>
+            <form id="style-form" onsubmit="event.preventDefault(); showPage('allergens-page');">
+                <div class="mb-3 d-flex flex-wrap allergens-group">
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="style" value="中式" id="cb-中式"><label class="form-check-label" for="cb-中式"> 中式</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="style" value="日式" id="cb-日式"><label class="form-check-label" for="cb-日式"> 日式</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="style" value="泰式" id="cb-泰式"><label class="form-check-label" for="cb-泰式"> 泰式</label></div>
+                    <button type="submit" class="btn btn-primary w-100 mt-3">下一頁</button>
+                </div>
+            </form>
+        </div>
+        <div id="allergens-page" class="page">
+            <h2 class="mb-3">設定飲食忌口 (含過敏原)及偏好</h2>
+            <p class="text-muted">請選擇您過敏或禁忌的項目：</p>
+            <div id="allergens-error" class="alert alert-danger" style="display: none;"></div>
+            <form id="allergens-form">
+                <div class="mb-3 d-flex flex-wrap allergens-group">
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="allergens" value="花生" id="cb-花生"><label class="form-check-label" for="cb-花生"> 花生</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="allergens" value="海鮮" id="cb-海鮮"><label class="form-check-label" for="cb-海鮮"> 海鮮</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="allergens" value="奶製品" id="cb-奶製品"><label class="form-check-label" for="cb-奶製品"> 奶製品</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="allergens" value="麩質" id="cb-麩質"><label class="form-check-label" for="cb-麩質"> 麩質</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="allergens" value="雞蛋" id="cb-雞蛋"><label class="form-check-label" for="cb-雞蛋"> 雞蛋</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="allergens" value="堅果" id="cb-堅果"><label class="form-check-label" for="cb-堅果"> 堅果</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="allergens" value="芒果" id="cb-芒果"><label class="form-check-label" for="cb-芒果"> 芒果</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="allergens" value="不吃牛" id="cb-不吃牛"><label class="form-check-label" for="cb-不吃牛"> 不吃牛</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="allergens" value="不吃豬" id="cb-不吃豬"><label class="form-check-label" for="cb-不吃豬"> 不吃豬</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="allergens" value="無" id="cb-無"><label class="form-check-label" for="cb-無"> 無</label></div>
+                    <button type="submit" class="btn btn-primary w-100 mt-3">完成設定</button>
+                </div>
+            </form>
+        </div>
+        <!-- 功能選擇介面 -->
+        <div id="feature-selection-page" class="page">
+            <h2 id="welcome-message" class="text-center"></h2>
+            <p class="text-center text-muted mt-n2 mb-4">請選擇您要使用的功能：</p>
+            <div class="d-grid gap-3">
+                <div class="row g-3 text-center">
+                    <div class="col-12 col-sm-6"><button id="daily-recommendation-btn" class="btn btn-lg btn-outline-primary w-100 feature-button">每日推薦</button></div>
+                    <div class="col-12 col-sm-6"><button onclick="window.location.href='Ingredient_upload.html'" class="btn btn-lg btn-outline-primary w-100 feature-button">食材上傳</button></div>
+                    <div class="col-12 col-sm-6"><button onclick="window.location.href='identification.html'" class="btn btn-lg btn-outline-primary w-100 feature-button">料理辨識</button></div>
+                    <div class="col-12 col-sm-6"><button onclick="window.location.href='options.html'" class="btn btn-lg btn-outline-primary w-100 feature-button">選項推薦</button></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading 遮罩 -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 專案設定檔 (包含 GAS URL) -->
+    <script src="config.js"></script>
+    <!-- 載入合併後的共用 JS -->
+    <script src="app.js"></script>
+    <!-- 頁面主要邏輯 -->
+    <script>
+        // --- DOM ELEMENTS ---
+        const pages = document.querySelectorAll('.page');
+        const authContainer = document.getElementById('auth-container');
+        const mainContent = document.getElementById('main-content');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        let currentUsername = null; // 用於在註冊後儲存使用者名稱
+
+        // --- PAGE NAVIGATION ---
+        function showPage(pageId) {
+            // 如果是登入後的頁面，顯示 header 和 main content
+            if (['allergens-page', 'style-page', 'feature-selection-page'].includes(pageId)) {
+                mainContent.style.display = 'block';
+                authContainer.style.display = 'none'; // 隱藏登入區塊
+            } else { // 否則顯示登入/註冊區塊
+                mainContent.style.display = 'none';
+                authContainer.style.display = 'flex'; // 顯示登入區塊
+            }
+
+            pages.forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        // --- UTILITY FUNCTIONS ---
+        function showLoading(show) {
+            loadingOverlay.style.display = show ? 'flex' : 'none';
+        }
+
+        function showError(page, message) {
+            const errorEl = document.getElementById(`${page}-error`);
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        function hideErrors() {
+            document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.alert-danger').forEach(el => el.style.display = 'none');
+        }
+
+        // --- API CALL ---
+        async function callGasApi(action, payload) {
+            showLoading(true);
+            hideErrors();
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action, ...payload })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`伺服器錯誤: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    return result;
+                } else {
+                    throw new Error(result.message || '發生未知錯誤');
+                }
+            } catch (error) {
+                console.error('API Call Failed:', error);
+                // 根據當前頁面顯示錯誤
+                const activePage = document.querySelector('.page.active')?.id.split('-')[0] || 'login';
+                showError(activePage, error.message);
+                return null;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        /**
+         * 頁面初始化函式
+         * 檢查 localStorage 中是否有登入資訊，若有則直接顯示功能頁面
+         */
+        function initializePage() {
+            const loggedInUser = localStorage.getItem('loggedInUser');
+            if (loggedInUser) {
+                try {
+                    const { idName, displayName } = JSON.parse(loggedInUser);
+                    currentUsername = idName;
+                    document.getElementById('welcome-message').textContent = `歡迎回來, ${displayName}`;
+                    showPage('feature-selection-page');
+                } catch (e) {
+                    console.error("Failed to parse user data from localStorage", e);
+                    localStorage.removeItem('loggedInUser'); // 解析失敗則清除
+                }
+            } else {
+                showPage('login-page'); // 如果未登入，顯示登入頁
+            }
+        }
+
+        /**
+         * 檢查 URL hash 並跳轉到指定頁面
+         */
+        function handleUrlHash() {
+            const hash = window.location.hash.substring(1);
+            if (['allergens-page', 'style-page'].includes(hash)) {
+                // 確保使用者是登入狀態才能跳轉
+                if (localStorage.getItem('loggedInUser')) {
+                    showPage(hash);
+                }
+            }
+            // 清除 hash 避免重新整理時再次觸發
+            history.pushState("", document.title, window.location.pathname + window.location.search);
+        }
+
+        // --- EVENT HANDLERS ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initializePage();
+            handleUrlHash(); // 檢查並處理 URL hash
+        });
+
+        document.getElementById('register-id-name').addEventListener('blur', async (e) => { // 'blur' means when the user clicks away
+            const idName = e.target.value.trim();
+            if (idName.length === 0 || !/^[A-Za-z]+$/.test(idName)) {
+                return;
+            }
+            
+            const result = await callGasApi('checkIdName', { id_name: idName });
+            if (result && !result.available) {
+                showError('register', '此帳號已被註冊');
+            } else {
+                // If the API call was successful and the name is available, hide the error.
+                // Note: callGasApi already hides previous errors.
+            }
+        });
+
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idName = document.getElementById('register-id-name').value;
+            const pw = document.getElementById('register-pw').value;
+            const pwConfirm = document.getElementById('register-pw-confirm').value;
+
+            if (pw !== pwConfirm) {
+                showError('register', '兩次輸入的密碼不一致');
+                return;
+            }
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+            if (!passwordRegex.test(pw)) {
+                showError('register', '密碼格式不符 (至少8碼，且包含大小寫英文及數字)');
+                return;
+            }
+            if (!/^[A-Za-z]{1,12}$/.test(idName)) {
+                showError('register', '登入帳號格式不符 (僅限英文，最多12字)');
+                return;
+            }
+            const username = document.getElementById('register-username').value;
+
+            const result = await callGasApi('register', { id_name: idName, username: username, pw: pw });
+            if (result && result.status === 'success') {
+                currentUsername = idName; // 使用 idName 來更新過敏原
+                // 將登入資訊存入 localStorage
+                localStorage.setItem('loggedInUser', JSON.stringify({
+                    idName: idName,
+                    displayName: username // 註冊時使用輸入的 username
+                }));
+                showPage('style-page'); // 註冊後先到料理風味頁
+            }
+        });
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idName = document.getElementById('login-id-name').value;
+            const pw = document.getElementById('login-pw').value;
+
+            const result = await callGasApi('login', { id_name: idName, pw: pw });
+            if (result && result.status === 'success') {
+                const displayName = result.username || idName;
+                currentUsername = idName; // 儲存登入帳號以備後用
+                localStorage.setItem('loggedInUser', JSON.stringify({
+                    idName: idName,
+                    displayName: displayName
+                }));
+                location.reload(); // 登入成功後重新整理頁面
+            }
+        });
+
+        document.getElementById('allergens-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // 收集飲食忌口
+            const selectedAllergens = Array.from(document.querySelectorAll('input[name="allergens"]:checked'))
+                                         .map(el => el.value);
+            const allergensStr = selectedAllergens.join(',');
+
+            // 收集料理風味
+            const selectedStyles = Array.from(document.querySelectorAll('input[name="style"]:checked'))
+                                        .map(el => el.value);
+            const styleStr = selectedStyles.join(',');
+
+            if (!currentUsername) {
+                showError('allergens', '無法識別使用者身份，請重新註冊。');
+                return;
+            }
+
+            // 將飲食忌口和料理風味一起送出
+            const result = await callGasApi('updateAllergens', { id_name: currentUsername, allergens: allergensStr, style: styleStr });
+            if (result && result.status === 'success') {
+                // 註冊流程完成後，也跳轉到功能選擇頁
+                const loggedInUser = localStorage.getItem('loggedInUser');
+                if (loggedInUser) {
+                    document.getElementById('welcome-message').textContent = `設定完成，歡迎 ${JSON.parse(loggedInUser).displayName}！`;
+                }
+                showPage('feature-selection-page');
+            }
+        });
+
+        // 功能選擇：每日推薦
+        document.getElementById('daily-recommendation-btn').addEventListener('click', () => {
+            if (currentUsername) {
+                // 將使用者帳號透過 URL 參數傳遞到 day.html
+                window.location.href = `day.html?user=${encodeURIComponent(currentUsername)}`;
+            } else {
+                alert('無法識別使用者，請重新登入。');
+                location.reload();
+            }
+        });
+    </script>
+</body>
+</html>
