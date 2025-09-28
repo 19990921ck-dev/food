@@ -16,7 +16,7 @@ function initializeHeader() {
             <header id="app-header" class="app-header sticky-top">
                 <nav class="navbar navbar-expand">
                     <div class="container-fluid">
-                        <a class="navbar-brand" href="login.html">
+                        <a class="navbar-brand" href="index.html">
                             <i class="fa-solid fa-utensils"></i>
                             <span>智慧餐廚</span>
                         </a>
@@ -35,6 +35,26 @@ function initializeHeader() {
                 </nav>
             </header>
         `;
+    }
+}
+
+/**
+ * Updates the username display in the header based on localStorage.
+ * Can be called anytime to refresh the username.
+ */
+function updateHeaderUsername() {
+    const usernameDisplay = document.getElementById('header-username');
+    const loggedInUser = localStorage.getItem('loggedInUser');
+    if (loggedInUser && usernameDisplay) {
+        try {
+            const { displayName } = JSON.parse(loggedInUser);
+            usernameDisplay.textContent = displayName;
+        } catch (e) {
+            console.error("Failed to parse user data for header update:", e);
+            usernameDisplay.textContent = '資料錯誤';
+        }
+    } else if (usernameDisplay) {
+        usernameDisplay.textContent = '尚未登入';
     }
 }
 
@@ -63,33 +83,22 @@ function initializeCommonFeatures() {
         logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.removeItem('loggedInUser');
-            window.location.href = 'login.html';
+            updateHeaderUsername(); // Update header on logout
+            window.location.href = 'index.html';
         });
     }
 
     if (resetSettingsBtn) {
         resetSettingsBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            // 修正：改用更可靠的 URL 路徑來判斷是否在 login.html
-            if (window.location.pathname.endsWith('/login.html') || window.location.pathname.endsWith('/')) {
-                // 如果在 login.html，直接切換頁面，避免重整
-                // 並且確認 showPage 函式確實存在
-                if (typeof showPage === 'function') {
-                    showPage('style-page');
-                }
-            } else {
-                // 如果在其他頁面，跳轉回 login.html 的設定頁
-                window.location.href = 'login.html#style-page';
-            }
+            // 統一跳轉邏輯：無論在哪個頁面，都跳轉回 index.html 的設定頁
+            // index.html 自己的邏輯會處理 hash 並顯示正確頁面
+            window.location.href = 'index.html#style-page';
         });
     }
-
-    const loggedInUser = localStorage.getItem('loggedInUser');
-    if (loggedInUser && usernameDisplay) {
-        const { displayName } = JSON.parse(loggedInUser);
-        usernameDisplay.textContent = displayName;
-    }
-
+ 
+    // Initial update of the username on page load
+    updateHeaderUsername();
     if (typeof initializeDailyPage === 'function') {
         initializeDailyPage();
     }
@@ -154,10 +163,11 @@ async function callGasApi(action, payload, loadingText = null) {
 // --- Main Execution ---
 document.addEventListener('DOMContentLoaded', () => {
     initializeHeader();
-    initializeCommonFeatures();
-
+ 
     // Check for and execute page-specific initialization functions
     if (typeof initializePage === 'function') {
         initializePage();
     }
+ 
+    initializeCommonFeatures();
 });
