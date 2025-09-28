@@ -21,7 +21,7 @@
     <main class="main-content container feature-container">
         <!-- 頁面一：上傳食材 -->
         <div id="page1" class="page active">
-            <h1>從食材生成食譜</h1>
+            <h1>食材辨識</h1>
             <div class="image-upload-container">
                 <p>請上傳或拍攝食材照片 (一個食材一張照片，最多3種食材)</p>
                 <input type="file" id="image-input" accept="image/*" multiple style="display: none;">
@@ -107,7 +107,7 @@
             <div class="button-group">
                 <button id="save-btn" class="feature-button-style" style="background-color: var(--theme-success);">儲存食譜</button>
                 <button onclick="location.reload()" class="feature-button-style" style="background-color: #6c757d;">再次分析</button>
-                <a href="index.html" class="btn btn-outline-secondary mt-3">返回功能選單</a>
+                <a href="index.html" class="btn btn-outline-secondary mt-3">返回主選單</a>
             </div>
         </div>
     </main>
@@ -372,7 +372,7 @@
             const payload = {
                 payload: {
                     id_name: currentUserIdName,
-                    source: '食材上傳',
+                    source: '食材辨識',
                     dishName: recipeData.dishName,
                     ingredients: recipeData.ingredients,
                     instructions: recipeData.instructions
@@ -466,5 +466,3 @@
     </script>
 </body>
 </html>
-
-
