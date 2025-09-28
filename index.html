@@ -220,12 +220,13 @@
             const headerPlaceholder = document.getElementById('header-placeholder');
 
             // 【需求修改】: 在新使用者設定偏好與忌口時，隱藏頂部導覽列
+            // 只有當頁面是 style-page 或 allergens-page，且使用者是首次設定時 (localStorage 中沒有 allergens 欄位)，才隱藏 header
             if (['style-page', 'allergens-page'].includes(pageId)) {
-                // 透過檢查 allergens 是否已存在於 localStorage 來判斷是否為「新註冊流程」
                 const user = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
-                if (user && user.allergens === undefined) { // 如果 allergens 欄位不存在，代表是新註冊
+                if (user && user.allergens === undefined) { // `allergens` 欄位不存在，代表是新註冊流程
                     headerPlaceholder.style.display = 'none';
                 } else {
+                    // 對於已完成首次設定的使用者，即使回到設定頁面，header 也要顯示
                     headerPlaceholder.style.display = 'block';
                 }
             } else {
