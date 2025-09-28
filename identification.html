@@ -44,6 +44,12 @@
                 <h4 class="mb-2"><i class="fa-solid fa-kitchen-set me-2 text-primary"></i>烹飪之旅</h4>
                 <ol id="steps-list" class="list-group list-group-numbered"></ol>
             </div>
+            <div class="mb-3" style="margin-top: 20px;">
+                <label for="refine-input">不滿意嗎？告訴 AI 如何修改 (例如：換成雞肉、不要加辣)</label>
+                <textarea id="refine-input" rows="2" class="form-control"></textarea>
+                <div class="form-text text-muted small mt-1">修改上限為2次</div>
+                <button id="refine-btn" class="btn btn-info text-white mt-2">請 AI 修改</button>
+            </div>
             <div class="button-group">
                 <button id="save-btn" class="btn btn-success">儲存食譜</button>
                 <button onclick="location.reload()" class="btn btn-secondary">再次分析</button>
@@ -73,6 +79,7 @@
         const submitBtn = document.getElementById('submit-btn');
         const saveBtn = document.getElementById('save-btn');
         const cameraBtn = document.getElementById('camera-btn');
+        const refineBtn = document.getElementById('refine-btn');
         const video = document.getElementById('camera-video');
         const canvas = document.getElementById('camera-canvas');
 
@@ -80,23 +87,35 @@
         let imageMimeType = null;
         let recipeData = null;
         let currentUserIdName = null;
+        let refineCount = 0; // 用於計算修改次數
 
         // 處理圖片上傳
-        imageInput.addEventListener('change', (event) => {
+        imageInput.addEventListener('change', (event) => { // 當使用者選擇檔案時觸發
             const file = event.target.files[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    imagePreview.src = e.target.result;
+                // 建立一個 Image 物件來處理圖片
+                const img = new Image();
+                img.onload = () => {
+                    // 圖片載入後，將其繪製到隱藏的 canvas 上
+                    const canvas = document.getElementById('camera-canvas'); // 重複使用現有的 canvas
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+
+                    // 【關鍵修正】: 從 canvas 取得 image/jpeg 格式的資料
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.9); // 0.9 是壓縮品質
+
+                    imagePreview.src = dataUrl;
                     imagePreview.style.display = 'block';
                     deleteIcon.style.display = 'block';
                     submitBtn.disabled = false;
-                    const parts = e.target.result.split(',');
-                    const mimeTypePart = parts[0].match(/:(.*?);/);
-                    imageMimeType = mimeTypePart ? mimeTypePart[1] : 'image/jpeg';
+
+                    const parts = dataUrl.split(',');
+                    imageMimeType = 'image/jpeg'; // 固定為 jpeg
                     imageBase64 = parts[1];
                 };
-                reader.readAsDataURL(file);
+                img.src = URL.createObjectURL(file); // 將檔案轉換為 URL 讓 Image 物件讀取
             }
         });
 
@@ -140,34 +159,58 @@
             imageMimeType = null;
         }
 
-        // 送出分析
-        submitBtn.addEventListener('click', async () => {
-            if (!imageBase64) {
-                alert('請先上傳或拍攝一張照片。');
+        submitBtn.addEventListener('click', () => callApiAndDisplay(false));
+        refineBtn.addEventListener('click', () => callApiAndDisplay(true));
+
+        async function callApiAndDisplay(isRefine) {
+            if (isRefine && refineCount >= 2) {
+                alert('您已達到 2 次修改上限。');
+                refineBtn.disabled = true;
                 return;
             }
-            const prompt = `你是一位專業的廚師。請分析這張菜餚圖片。辨識出菜名，並提供詳細的食材清單（包含份量）和烹飪步驟。請嚴格按照以下 JSON 格式回傳，不要有任何額外的文字或解釋：
-            {"dishName": "菜餚名稱", "ingredients": [{"name": "食材A", "quantity": "份量A"}], "instructions": ["步驟一", "步驟二"]}`;
+
+            let prompt;
+            let loadingMessage;
+
+            if (isRefine) {
+                const refineRequest = document.getElementById('refine-input').value;
+                if (!refineRequest) {
+                    alert('請輸入修改需求。');
+                    return;
+                }
+                prompt = `你是一位專業的廚師。基於以下的食譜，請根據使用者的要求進行修改。
+                原始食譜: 菜名: ${recipeData.dishName}, 食材: ${JSON.stringify(recipeData.ingredients)}, 步驟: ${JSON.stringify(recipeData.instructions)}
+                使用者要求: "${refineRequest}"
+                請以繁體中文提供修改後的新食譜，並嚴格按照以下 JSON 格式回傳，不要有任何額外的文字或解釋：
+                {"dishName": "新菜餚名稱", "ingredients": [{"name": "食材", "quantity": "份量"}], "instructions": ["步驟一", "步驟二"]}`;
+                loadingMessage = 'AI 正在為您修改食譜...';
+            } else {
+                prompt = `你是一位專業的廚師。請分析這張菜餚圖片。辨識出菜名，並提供詳細的食材清單（包含份量）和烹飪步驟。請嚴格按照以下 JSON 格式回傳，不要有任何額外的文字或解釋：
+                {"dishName": "菜餚名稱", "ingredients": [{"name": "食材A", "quantity": "份量A"}], "instructions": ["步驟一", "步驟二"]}`;
+                loadingMessage = 'AI 正在分析中，請稍候...';
+            }
             
             const payload = {
                 prompt: prompt,
-                imageData: [{ base64: imageBase64, mimeType: imageMimeType }],
+                imageData: isRefine ? null : [{ base64: imageBase64, mimeType: imageMimeType }],
                 id_name: currentUserIdName
             };
 
-            const result = await callGasApi('analyzeDish', payload, 'AI 正在分析中，請稍候...');
+            const result = await callGasApi(isRefine ? 'refineRecipe' : 'analyzeDish', payload, loadingMessage);
             if (result) {
+                if (isRefine) refineCount++;
                 recipeData = result.data;
                 recipeData.idName = 'recipe-' + Date.now();
                 displayResults(recipeData);
                 showPage('page3');
             }
-        });
+        }
 
         function displayResults(data) {
             document.getElementById('dish-name').textContent = data.dishName;
             document.getElementById('ingredients-list').innerHTML = data.ingredients.map(item => `<li class="list-group-item">${item.name} - ${item.quantity}</li>`).join('');
             document.getElementById('steps-list').innerHTML = data.instructions.map(step => `<li class="list-group-item">${step.replace(/^\d+\.\s*/, '')}</li>`).join('');
+            document.getElementById('refine-input').value = ''; // 清空修改輸入框
         }
 
         // 儲存食譜
