@@ -33,6 +33,11 @@ function initializeHeader() {
                 </nav>
                 <nav id="navigation-menu" class="navigation-menu">
                     <a id="common-reset-settings-btn" href="#">重新設定偏好及忌口</a>
+                    <a id="common-daily-recommendation-btn" href="#">每日推薦</a>
+                    <a href="Ingredient_upload.html">食材上傳</a>
+                    <a href="identification.html">料理辨識</a>
+                    <a href="options.html">選項推薦</a>
+                    <a id="common-history-btn" href="#">歷史紀錄</a>
                     <hr class="my-2">
                     <a id="common-logout-btn" href="#" class="text-danger">登出</a>
                 </nav>
@@ -50,18 +55,25 @@ function updateHeaderUsername() {
     const usernameDisplay = document.getElementById('header-username');
     const resetSettingsBtn = document.getElementById('common-reset-settings-btn');
     const logoutBtn = document.getElementById('common-logout-btn');
+    // 取得所有需要登入才能顯示的選單項目
+    const menuItems = document.querySelectorAll('.navigation-menu a:not(#common-logout-btn), .navigation-menu hr');
     const menuSeparator = document.querySelector('.navigation-menu hr');
 
     const loggedInUser = localStorage.getItem('loggedInUser');
 
-    if (loggedInUser && usernameDisplay && resetSettingsBtn && logoutBtn && menuSeparator) {
+    if (loggedInUser && usernameDisplay) {
         try {
             const { displayName } = JSON.parse(loggedInUser);
             usernameDisplay.textContent = displayName;
             // 登入狀態：顯示選項
-            resetSettingsBtn.style.display = '';
-            logoutBtn.style.display = '';
-            menuSeparator.style.display = '';
+            menuItems.forEach(item => {
+                // 確保登出按鈕永遠可見 (如果邏輯需要)
+                if (item.id !== 'common-logout-btn') {
+                    item.style.display = '';
+                }
+            });
+            if (logoutBtn) logoutBtn.style.display = '';
+
         } catch (e) {
             console.error("Failed to parse user data for header update:", e);
             usernameDisplay.textContent = '資料錯誤';
@@ -69,9 +81,11 @@ function updateHeaderUsername() {
     } else if (usernameDisplay && resetSettingsBtn && logoutBtn && menuSeparator) {
         usernameDisplay.textContent = '尚未登入';
         // 未登入狀態：隱藏選項
-        resetSettingsBtn.style.display = 'none';
-        logoutBtn.style.display = 'none';
-        menuSeparator.style.display = 'none';
+        menuItems.forEach(item => {
+            if (item.id !== 'common-logout-btn') {
+                item.style.display = 'none';
+            }
+        });
     }
 }
 
@@ -85,6 +99,8 @@ function initializeCommonFeatures() {
     const navMenu = document.querySelector('.navigation-menu');
     const logoutBtn = document.getElementById('common-logout-btn');
     const resetSettingsBtn = document.getElementById('common-reset-settings-btn');
+    const dailyBtn = document.getElementById('common-daily-recommendation-btn');
+    const historyBtn = document.getElementById('common-history-btn');
     const usernameDisplay = document.getElementById('header-username');
 
     if (hamburgerBtn && navMenu) {
@@ -125,6 +141,44 @@ function initializeCommonFeatures() {
         });
     }
  
+    // --- Feature 4: Daily Recommendation Link ---
+    if (dailyBtn) {
+        dailyBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const user = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+            if (user && user.idName) {
+                window.location.href = `day.html?user=${encodeURIComponent(user.idName)}`;
+            } else {
+                alert('無法識別使用者，請重新登入。');
+            }
+        });
+    }
+
+    // --- Feature 5: History Link ---
+    if (historyBtn) {
+        historyBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isIndexPage = window.location.pathname.endsWith('/') || window.location.pathname.endsWith('/index.html');
+
+            if (isIndexPage && typeof window.showPage === 'function') {
+                // 如果在 index.html，直接呼叫函式切換
+                window.showPage('history-source-selection-page');
+            } else {
+                // 如果在其他頁面，跳轉回 index.html 的歷史紀錄頁
+                const homeUrl = (typeof BASE_PATH !== 'undefined' && BASE_PATH) ? `${BASE_PATH}index.html` : 'index.html';
+                window.location.href = `${homeUrl}#history-source-selection-page`;
+            }
+        });
+    }
+
+    // 修正: 確保在 index.html 頁面，點擊 hash 連結時能正確觸發 showPage
+    if (window.location.hash && window.location.pathname.includes('index.html')) {
+        const pageId = window.location.hash.substring(1);
+        if (document.getElementById(pageId) && typeof window.showPage === 'function') {
+            window.showPage(pageId);
+        }
+    }
+
     // Initial update of the username on page load
     if (typeof initializeDailyPage === 'function') {
         initializeDailyPage();
