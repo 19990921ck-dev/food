@@ -32,13 +32,13 @@ function initializeHeader() {
                     </div>
                 </nav>
                 <nav id="navigation-menu" class="navigation-menu">
-                    <a id="common-reset-settings-btn" href="#">重新設定偏好及忌口</a>
                     <a id="common-daily-recommendation-btn" href="#">每日推薦</a>
                     <a href="Ingredient_upload.html">食材上傳</a>
                     <a href="identification.html">料理辨識</a>
                     <a href="options.html">選項推薦</a>
                     <a id="common-history-btn" href="#">歷史紀錄</a>
                     <hr class="my-2">
+                    <a id="common-reset-settings-btn" href="#">重新設定偏好及忌口</a>
                     <a id="common-logout-btn" href="#" class="text-danger">登出</a>
                 </nav>
             </header>
@@ -254,3 +254,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize all common interactive elements
     initializeCommonFeatures();
 });
+
