@@ -11,7 +11,7 @@
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="login.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <main class="main-content container feature-container">
@@ -97,7 +97,7 @@
             <div class="button-group">
                 <button id="save-btn" class="btn btn-success">儲存食譜</button>
                 <button onclick="location.reload()" class="btn btn-secondary">再次分析</button>
-                <a href="login.html" class="btn btn-outline-secondary">返回功能選單</a>
+                <a href="index.html" class="btn btn-outline-secondary">返回功能選單</a>
             </div>
         </div>
     </main>
@@ -366,7 +366,7 @@
             const loggedInUser = localStorage.getItem('loggedInUser');
             if (!loggedInUser) {
                 alert('無法識別使用者身份，將返回登入頁面。');
-                window.location.href = 'login.html';
+                window.location.href = 'index.html'; // 確保跳轉
             } else {
                 currentUserIdName = JSON.parse(loggedInUser).idName;
             }
