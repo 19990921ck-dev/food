@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <!-- 共用導覽列的容器 -->
-    <div id="header-placeholder"></div>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>選項推薦 - 智慧餐廚</title>
@@ -11,9 +9,11 @@
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="LOGIN.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- 共用導覽列的容器 -->
+    <div id="header-placeholder"></div>
     <main class="main-content container feature-container">
         <!-- 頁面一：選擇偏好 -->
         <div id="page1" class="page active">
@@ -82,7 +82,7 @@
             <div class="button-group">
                 <button id="save-btn" class="btn btn-success">儲存食譜</button>
                 <button onclick="location.reload()" class="btn btn-secondary">再次分析</button>
-                <a href="login.html" class="btn btn-outline-secondary">返回功能選單</a>
+                <a href="index.html" class="btn btn-outline-secondary">返回功能選單</a>
             </div>
         </div>
     </main>
@@ -217,7 +217,7 @@
             const loggedInUser = localStorage.getItem('loggedInUser');
             if (!loggedInUser) {
                 alert('無法識別使用者身份，將返回登入頁面。');
-                window.location.href = 'login.html';
+                window.location.href = 'index.html';
             } else {
                 currentUserIdName = JSON.parse(loggedInUser).idName;
                 // 頁面載入時，就獲取一次最新的使用者偏好
