@@ -21,7 +21,7 @@ function initializeHeader() {
                     <div class="container-fluid">
                         <a class="navbar-brand" href="${homeUrl}">
                             <i class="fa-solid fa-utensils"></i>
-                            <span>智慧餐廚</span>
+                            <span>今日食光</span>
                         </a>
                         <div class="d-flex align-items-center ms-auto">
                             <span id="header-username" class="user-display me-2">尚未登入</span>
@@ -46,33 +46,32 @@ function initializeHeader() {
  * Can be called anytime to refresh the username.
  */
 function updateHeaderUsername() {
+    // 獲取需要控制顯示/隱藏的導覽選單項目
     const usernameDisplay = document.getElementById('header-username');
-    const hamburgerBtn = document.querySelector('.hamburger-button');
-    const navMenu = document.getElementById('navigation-menu');
+    const resetSettingsBtn = document.getElementById('common-reset-settings-btn');
+    const logoutBtn = document.getElementById('common-logout-btn');
+    const menuSeparator = document.querySelector('.navigation-menu hr');
 
     const loggedInUser = localStorage.getItem('loggedInUser');
 
-    if (loggedInUser && usernameDisplay && hamburgerBtn && navMenu) {
+    if (loggedInUser && usernameDisplay && resetSettingsBtn && logoutBtn && menuSeparator) {
         try {
             const { displayName } = JSON.parse(loggedInUser);
             usernameDisplay.textContent = displayName;
-            // 登入狀態：顯示漢堡選單
-            hamburgerBtn.style.display = ''; // 清除 JS 設定的樣式，讓 CSS 決定是否顯示
-            navMenu.style.display = ''; // 清除 JS 設定的樣式，讓 CSS 決定是否顯示
+            // 登入狀態：顯示選項
+            resetSettingsBtn.style.display = '';
+            logoutBtn.style.display = '';
+            menuSeparator.style.display = '';
         } catch (e) {
             console.error("Failed to parse user data for header update:", e);
             usernameDisplay.textContent = '資料錯誤';
-            // 資料錯誤狀態：強制隱藏漢堡選單和導覽列
-            hamburgerBtn.style.display = 'none';
-            navMenu.style.display = 'none';
-            navMenu.classList.remove('is-active'); // 確保選單是關閉的
         }
-    } else if (usernameDisplay && hamburgerBtn && navMenu) {
+    } else if (usernameDisplay && resetSettingsBtn && logoutBtn && menuSeparator) {
         usernameDisplay.textContent = '尚未登入';
-        // 未登入狀態：強制隱藏漢堡選單和導覽列
-        hamburgerBtn.style.display = 'none';
-        navMenu.style.display = 'none';
-        navMenu.classList.remove('is-active'); // 確保選單是關閉的
+        // 未登入狀態：隱藏選項
+        resetSettingsBtn.style.display = 'none';
+        logoutBtn.style.display = 'none';
+        menuSeparator.style.display = 'none';
     }
 }
 
@@ -127,7 +126,6 @@ function initializeCommonFeatures() {
     }
  
     // Initial update of the username on page load
-    updateHeaderUsername();
     if (typeof initializeDailyPage === 'function') {
         initializeDailyPage();
     }
@@ -192,11 +190,13 @@ async function callGasApi(action, payload, loadingText = null) {
 // --- Main Execution ---
 document.addEventListener('DOMContentLoaded', () => {
     initializeHeader();
+    updateHeaderUsername(); // Update username as soon as header is ready
  
     // Check for and execute page-specific initialization functions
     if (typeof initializePage === 'function') {
         initializePage();
     }
  
+    // Initialize all common interactive elements
     initializeCommonFeatures();
 });
