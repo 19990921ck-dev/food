@@ -47,17 +47,32 @@ function initializeHeader() {
  */
 function updateHeaderUsername() {
     const usernameDisplay = document.getElementById('header-username');
+    const hamburgerBtn = document.querySelector('.hamburger-button');
+    const navMenu = document.getElementById('navigation-menu');
+
     const loggedInUser = localStorage.getItem('loggedInUser');
-    if (loggedInUser && usernameDisplay) {
+
+    if (loggedInUser && usernameDisplay && hamburgerBtn && navMenu) {
         try {
             const { displayName } = JSON.parse(loggedInUser);
             usernameDisplay.textContent = displayName;
+            // 登入狀態：顯示漢堡選單
+            hamburgerBtn.style.display = ''; // 清除 JS 設定的樣式，讓 CSS 決定是否顯示
+            navMenu.style.display = ''; // 清除 JS 設定的樣式，讓 CSS 決定是否顯示
         } catch (e) {
             console.error("Failed to parse user data for header update:", e);
             usernameDisplay.textContent = '資料錯誤';
+            // 資料錯誤狀態：強制隱藏漢堡選單和導覽列
+            hamburgerBtn.style.display = 'none';
+            navMenu.style.display = 'none';
+            navMenu.classList.remove('is-active'); // 確保選單是關閉的
         }
-    } else if (usernameDisplay) {
+    } else if (usernameDisplay && hamburgerBtn && navMenu) {
         usernameDisplay.textContent = '尚未登入';
+        // 未登入狀態：強制隱藏漢堡選單和導覽列
+        hamburgerBtn.style.display = 'none';
+        navMenu.style.display = 'none';
+        navMenu.classList.remove('is-active'); // 確保選單是關閉的
     }
 }
 
