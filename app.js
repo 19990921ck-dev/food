@@ -10,13 +10,16 @@
  * Injects the shared header HTML into the placeholder element.
  */
 function initializeHeader() {
+    // 修正：根據 config.js 中的 BASE_PATH 決定連結路徑
+    const homeUrl = (typeof BASE_PATH !== 'undefined' && BASE_PATH) ? `${BASE_PATH}index.html` : 'index.html';
+
     const headerPlaceholder = document.getElementById('header-placeholder');
     if (headerPlaceholder) {
         headerPlaceholder.innerHTML = `
             <header id="app-header" class="app-header sticky-top">
                 <nav class="navbar navbar-expand">
                     <div class="container-fluid">
-                        <a class="navbar-brand" href="index.html">
+                        <a class="navbar-brand" href="${homeUrl}">
                             <i class="fa-solid fa-utensils"></i>
                             <span>智慧餐廚</span>
                         </a>
@@ -83,8 +86,10 @@ function initializeCommonFeatures() {
         logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.removeItem('loggedInUser');
-            updateHeaderUsername(); // Update header on logout
-            window.location.href = 'index.html';
+            updateHeaderUsername();
+            // 修正：使用動態產生的 homeUrl 進行跳轉
+            const homeUrl = (typeof BASE_PATH !== 'undefined' && BASE_PATH) ? `${BASE_PATH}index.html` : 'index.html';
+            window.location.href = homeUrl;
         });
     }
 
@@ -93,7 +98,9 @@ function initializeCommonFeatures() {
             e.preventDefault();
             // 統一跳轉邏輯：無論在哪個頁面，都跳轉回 index.html 的設定頁
             // index.html 自己的邏輯會處理 hash 並顯示正確頁面
-            window.location.href = 'index.html#style-page';
+            // 修正：使用動態產生的 homeUrl 進行跳轉
+            const homeUrl = (typeof BASE_PATH !== 'undefined' && BASE_PATH) ? `${BASE_PATH}index.html` : 'index.html';
+            window.location.href = `${homeUrl}#style-page`;
         });
     }
  
