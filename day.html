@@ -9,7 +9,7 @@
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="LOGIN.css">
+    <link rel="stylesheet" href="login.css">
 </head>
 <body>
     <!-- 共用導覽列的容器 -->
@@ -38,11 +38,6 @@
     <!-- 載入合併後的共用 JS -->
     <script src="app.js"></script>
     <script>
-        // --- UTILITY FUNCTIONS ---
-        function showLoading(show) {
-            document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
-        }
-
         function showError(message) {
             const errorContainer = document.getElementById('error-container');
             errorContainer.textContent = message;
@@ -51,53 +46,29 @@
             document.getElementById('menu-container').style.display = 'none'; // 隱藏菜單區
         }
 
-        // --- API CALL ---
-        async function callGasApi(action, payload) {
-            showLoading(true);
-            try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    redirect: 'follow',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action, ...payload })
-                });
-                if (!response.ok) throw new Error(`伺服器錯誤: ${response.statusText}`);
-                const result = await response.json();
-                if (result.status === 'success') return result;
-                else throw new Error(result.message || '發生未知錯誤');
-            } catch (error) {
-                console.error('API Call Failed:', error);
-                showError(error.message);
-                return null;
-            } finally {
-                showLoading(false); // 確保無論成功或失敗，都關閉載入動畫
-            }
-        }
-
         // Helper function to render a list of meal items
         function renderInstructionList(items) {
             if (!items || items.length === 0) {
                 return '<li class="list-group-item text-muted">無步驟說明</li>';
             }
-            return items.map(item => `<li class="list-group-item">${item}</li>`).join('');
+            return items.map(item => `<li class="list-group-item">${item.replace(/^[\s\d一二三四五六七八九十()（）[\]【】.]*?[.:：、)\s]*/, '')}</li>`).join('');
         }
 
         /**
-         * 每日推薦頁面的主要邏輯
-         * 確保在 common.js 初始化完成後才執行
+         * Page-specific initialization function.
+         * This will be called by app.js after the DOM is loaded.
          */
-        async function initializeDailyPage() {
+        async function initializePage() {
             // 1. 從 URL 取得使用者 ID
             const urlParams = new URLSearchParams(window.location.search);
             const userIdName = urlParams.get('user');
 
             if (!userIdName) {
                 showError('無法識別使用者身份，請返回登入頁面。');
-                showLoading(false);
                 return;
             }
 
-            // 2. 呼叫後端 API 取得推薦菜單
+            // 2. Call the backend API using the global callGasApi function
             const result = await callGasApi('getDailyRecommendation', { id_name: userIdName });
 
             if (result) {
