@@ -27,7 +27,13 @@
                 <input type="file" id="image-input" accept="image/*" multiple style="display: none;">
                 <button onclick="document.getElementById('image-input').click();" class="feature-button-style">上傳照片</button>
                 <button id="camera-btn" class="feature-button-style feature-button-secondary">手機拍照</button>
-                <video id="camera-video" playsinline autoplay style="display:none; width: 100%; border-radius: 5px; margin-top: 10px;"></video>
+                <div id="camera-view" style="display:none; margin-top: 10px;">
+                    <video id="camera-video" playsinline autoplay style="width: 100%; border-radius: 5px;"></video>
+                    <div class="text-center mt-2">
+                        <button id="shutter-btn" class="btn btn-danger btn-lg rounded-circle"><i class="fa-solid fa-camera"></i></button>
+                        <button id="cancel-camera-btn" class="btn btn-secondary ms-2">取消</button>
+                    </div>
+                </div>
                 <div id="image-previews-container"></div>
                 <canvas id="camera-canvas" style="display:none;"></canvas>
             </div>
@@ -131,6 +137,9 @@
         const nextBtn = document.getElementById('next-btn');
         const submitBtn = document.getElementById('submit-btn');
         const saveBtn = document.getElementById('save-btn');
+        const cameraView = document.getElementById('camera-view');
+        const shutterBtn = document.getElementById('shutter-btn');
+        const cancelCameraBtn = document.getElementById('cancel-camera-btn');
 
         const cameraBtn = document.getElementById('camera-btn');
         const video = document.getElementById('camera-video');
@@ -171,31 +180,40 @@
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                     video.srcObject = stream;
-                    video.style.display = 'block';
-                    video.onloadedmetadata = () => {
-                        // 點擊影片即可拍照
-                        video.addEventListener('click', () => {
-                            canvas.width = video.videoWidth;
-                            canvas.height = video.videoHeight;
-                            canvas.getContext('2d').drawImage(video, 0, 0);
-                            const dataUrl = canvas.toDataURL('image/jpeg');
-                            const id = 'img-' + Date.now() + Math.random();
-                            const parts = dataUrl.split(',');
-                            const mimeTypePart = parts[0].match(/:(.*?);/);
-                            if (images.length < 3) {
-                                images.push({
-                                    id: id,
-                                    base64: parts[1],
-                                    mimeType: mimeTypePart ? mimeTypePart[1] : 'image/jpeg'
-                                });
-                                renderPreviews();
-                            } else { alert('食材不可超過三樣'); }
+                    cameraView.style.display = 'block';
 
-                            // 停止攝影機
-                            stream.getTracks().forEach(track => track.stop());
-                            video.style.display = 'none';
+                    // 將拍照邏輯綁定到快門按鈕
+                    shutterBtn.onclick = () => {
+                        if (images.length >= 3) {
+                            alert('食材不可超過三樣');
+                            return;
+                        }
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        canvas.getContext('2d').drawImage(video, 0, 0);
+                        const dataUrl = canvas.toDataURL('image/jpeg');
+                        const id = 'img-' + Date.now() + Math.random();
+                        const parts = dataUrl.split(',');
+                        const mimeTypePart = parts[0].match(/:(.*?);/);
+                        
+                        images.push({
+                            id: id,
+                            base64: parts[1],
+                            mimeType: mimeTypePart ? mimeTypePart[1] : 'image/jpeg'
                         });
+                        renderPreviews();
+
+                        // 拍照後關閉相機
+                        stream.getTracks().forEach(track => track.stop());
+                        cameraView.style.display = 'none';
                     };
+
+                    // 取消按鈕的邏輯
+                    cancelCameraBtn.onclick = () => {
+                        stream.getTracks().forEach(track => track.stop());
+                        cameraView.style.display = 'none';
+                    };
+
                 } catch (err) {
                     alert('無法啟動相機：' + err);
                 }
