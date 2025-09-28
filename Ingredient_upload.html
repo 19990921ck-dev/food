@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>功能二：從食材生成食譜</title>
+    <title>料理辨識 - 今日食光</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome for Icons -->
@@ -19,12 +19,12 @@
     <!-- 共用導覽列的容器 -->
     <div id="header-placeholder"></div>
     <main class="main-content container feature-container">
-        <!-- 頁面一：上傳食材 -->
+        <!-- 頁面一：上傳 -->
         <div id="page1" class="page active">
-            <h1>從食材生成食譜</h1>
+            <h1>分析菜品照片</h1>
             <div class="image-upload-container">
-                <p>請上傳或拍攝食材照片 (最多3樣)</p>
-                <input type="file" id="image-input" accept="image/*" multiple style="display: none;">
+                <p>請上傳或拍攝一張菜品照片</p>
+                <input type="file" id="image-input" accept="image/*" style="display: none;">
                 <button onclick="document.getElementById('image-input').click();" class="feature-button-style">上傳照片</button>
                 <button id="camera-btn" class="feature-button-style feature-button-secondary">手機拍照</button>
                 <div id="camera-view" style="display:none; margin-top: 10px;">
@@ -34,61 +34,18 @@
                         <button id="cancel-camera-btn" class="btn btn-secondary ms-2">取消</button>
                     </div>
                 </div>
-                <div id="image-previews-container"></div>
-                <canvas id="camera-canvas" style="display:none;"></canvas>
+                <div id="image-preview-container">
+                    <img id="image-preview" src="" alt="Image preview">
+                    <span id="delete-icon" onclick="deleteImage()">×</span>
+                </div>
             </div>
-            <button id="next-btn" class="feature-button-style mt-3" disabled>下一步</button>
+            <button id="submit-btn" class="feature-button-style mt-3" disabled>送出分析</button>
         </div>
-
-        <!-- 頁面二：選擇偏好 -->
-        <div id="page2" class="page">
-            <h1>選擇您的飲食偏好</h1>
-            <div class="form-group">
-                <label for="diet-type">飲食類型</label>
-                <select id="diet-type" class="form-select">
-                    <option value="葷食">葷食</option>
-                    <option value="純素">純素</option>
-                    <option value="蛋奶素">蛋奶素</option>
-                    <option value="清真飲食">清真飲食</option>
-                    <option value="低過敏飲食">低過敏飲食</option>
-                </select>
-            </div>
-             <div class="form-group">
-                <label for="main-course">主菜</label>
-                <select id="main-course" class="form-select">
-                    <option value="不限">不限</option>
-                    <option value="牛">牛</option>
-                    <option value="雞">雞</option>
-                    <option value="豬">豬</option>
-                    <option value="鴨">鴨</option>
-                    <option value="魚">魚</option>
-                </select>
-                <div id="main-course-message" class="form-text text-danger" style="display: none;">素食不提供主菜選項</div>
-            </div>
-            <div class="form-group">
-                <label for="difficulty">烹飪難度</label>
-                <select id="difficulty" class="form-select">
-                    <option value="不限">不限</option>
-                    <option value="簡單">簡單 (15分鐘內)</option>
-                    <option value="中等">中等 (30分鐘內)</option>
-                    <option value="困難">困難 (60分鐘以上)</option>
-                </select>
-            </div>
-             <div class="form-group">
-                <label for="servings">份量</label>
-                <select id="servings" class="form-select">
-                    <option value="1人份">1人份</option>
-                    <option value="2人份" selected>2人份</option>
-                    <option value="4人份">4人份</option>
-                </select>
-            </div>
-            <button id="submit-btn" class="feature-button-style">生成食譜</button>
-        </div>
+        <canvas id="camera-canvas" style="display:none;"></canvas>
 
         <!-- 頁面三：結果 -->
         <div id="page3" class="page">
             <h2 id="dish-name" class="mb-4"></h2>
-            <!-- 在 page3 的 <h2> 標籤下方加入 -->
             <div id="conflict-warning" class="text-muted mb-3" style="display: none;"></div>
             <div class="mb-4">
                 <h4 class="mb-2"><i class="fa-solid fa-carrot me-2 text-warning"></i>精選食材</h4>
@@ -117,7 +74,7 @@
         <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
             <span class="visually-hidden">Loading...</span>
         </div>
-        <p class="mt-3">AI 正在生成食譜，請稍候...</p>
+        <p class="mt-3">AI 正在分析中，請稍候...</p>
     </div>
 
     <!-- Bootstrap JS -->
@@ -127,147 +84,108 @@
     <!-- 載入合併後的共用 JS -->
     <script src="app.js"></script>
     <script>
-        const page1 = document.getElementById('page1');
-        const page2 = document.getElementById('page2');
-        const page3 = document.getElementById('page3');
-        const loadingOverlay = document.getElementById('loading-overlay');
-
         const imageInput = document.getElementById('image-input');
-        const previewsContainer = document.getElementById('image-previews-container');
-        const nextBtn = document.getElementById('next-btn');
+        const imagePreview = document.getElementById('image-preview');
+        const deleteIcon = document.getElementById('delete-icon');
         const submitBtn = document.getElementById('submit-btn');
         const saveBtn = document.getElementById('save-btn');
+        const cameraBtn = document.getElementById('camera-btn');
+        const refineBtn = document.getElementById('refine-btn');
         const cameraView = document.getElementById('camera-view');
         const shutterBtn = document.getElementById('shutter-btn');
         const cancelCameraBtn = document.getElementById('cancel-camera-btn');
-
-        const cameraBtn = document.getElementById('camera-btn');
         const video = document.getElementById('camera-video');
         const canvas = document.getElementById('camera-canvas');
-        const refineBtn = document.getElementById('refine-btn');
 
-        let images = []; // { base64, mimeType, id }
+        let imageBase64 = null;
+        let imageMimeType = null;
         let recipeData = null;
-        let refineCount = 0; // 用於計算修改次數
         let currentUserIdName = null;
+        let refineCount = 0; // 用於計算修改次數
         let userPreferences = { allergens: '', style: '' }; // 用於儲存使用者的全域偏好
 
-        imageInput.addEventListener('change', (event) => {
-            const files = event.target.files;
-            if (images.length + files.length > 3) {
-                alert('食材不可超過三樣');
-                return;
-            }
-            for (const file of files) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const id = 'img-' + Date.now() + Math.random();
-                    const parts = e.target.result.split(',');
-                    const mimeTypePart = parts[0].match(/:(.*?);/);
-                    images.push({
-                        id: id,
-                        base64: parts[1],
-                        mimeType: mimeTypePart ? mimeTypePart[1] : 'image/jpeg'
-                    });
-                    renderPreviews();
+        // 處理圖片上傳
+        imageInput.addEventListener('change', (event) => { // 當使用者選擇檔案時觸發
+            const file = event.target.files[0];
+            if (file) {
+                // 建立一個 Image 物件來處理圖片
+                const img = new Image();
+                img.onload = () => {
+                    // 圖片載入後，將其繪製到隱藏的 canvas 上
+                    const canvas = document.getElementById('camera-canvas'); // 重複使用現有的 canvas
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+
+                    // 【關鍵修正】: 從 canvas 取得 image/jpeg 格式的資料
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.9); // 0.9 是壓縮品質
+
+                    imagePreview.src = dataUrl;
+                    imagePreview.style.display = 'block';
+                    deleteIcon.style.display = 'block';
+                    submitBtn.disabled = false;
+
+                    const parts = dataUrl.split(',');
+                    imageMimeType = 'image/jpeg'; // 固定為 jpeg
+                    imageBase64 = parts[1];
                 };
-                reader.readAsDataURL(file);
+                img.src = URL.createObjectURL(file); // 將檔案轉換為 URL 讓 Image 物件讀取
             }
         });
 
-         cameraBtn.addEventListener('click', async () => {
+        // 拍照功能
+        cameraBtn.addEventListener('click', async () => {
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                     video.srcObject = stream;
-                    cameraView.style.display = 'block';
+                    cameraView.style.display = 'block'; // 顯示包含影片和按鈕的容器
 
-                    // 將拍照邏輯綁定到快門按鈕
+                    // 快門按鈕邏輯
                     shutterBtn.onclick = () => {
-                        if (images.length >= 3) {
-                            alert('食材不可超過三樣');
-                            return;
-                        }
                         canvas.width = video.videoWidth;
                         canvas.height = video.videoHeight;
                         canvas.getContext('2d').drawImage(video, 0, 0);
                         const dataUrl = canvas.toDataURL('image/jpeg');
-                        const id = 'img-' + Date.now() + Math.random();
+
+                        imagePreview.src = dataUrl;
+                        imagePreview.style.display = 'block';
+                        deleteIcon.style.display = 'block';
+                        submitBtn.disabled = false;
+
                         const parts = dataUrl.split(',');
-                        const mimeTypePart = parts[0].match(/:(.*?);/);
-                        
-                        images.push({
-                            id: id,
-                            base64: parts[1],
-                            mimeType: mimeTypePart ? mimeTypePart[1] : 'image/jpeg'
-                        });
-                        renderPreviews();
+                        imageMimeType = 'image/jpeg';
+                        imageBase64 = parts[1];
 
                         // 拍照後關閉相機
                         stream.getTracks().forEach(track => track.stop());
                         cameraView.style.display = 'none';
                     };
 
-                    // 取消按鈕的邏輯
+                    // 取消按鈕邏輯
                     cancelCameraBtn.onclick = () => {
                         stream.getTracks().forEach(track => track.stop());
                         cameraView.style.display = 'none';
                     };
-
                 } catch (err) {
-                    alert('無法啟動相機：' + err);
+                    alert('無法啟動相機。請確認您的網站是使用 HTTPS 連線，並且您已授權瀏覽器使用相機。');
+                    cameraView.style.display = 'none'; // 確保在出錯時隱藏相機畫面
                 }
             } else {
                 alert('您的瀏覽器不支援相機功能。');
             }
         });
 
-        function renderPreviews() {
-            previewsContainer.innerHTML = '';
-            images.forEach(img => {
-                const dataUrl = `data:${img.mimeType};base64,${img.base64}`;
-                previewsContainer.insertAdjacentHTML('beforeend', `
-                    <div class="preview-item">
-                        <img src="${dataUrl}" />
-                        <span class="delete-icon" onclick="deleteImage('${img.id}')">×</span>
-                    </div>
-                `);
-            });
-            nextBtn.disabled = images.length === 0;
+        function deleteImage() {
+            imageInput.value = '';
+            imagePreview.src = '';
+            imagePreview.style.display = 'none';
+            deleteIcon.style.display = 'none';
+            submitBtn.disabled = true;
+            imageBase64 = null;
+            imageMimeType = null;
         }
-
-        function deleteImage(id) {
-            images = images.filter(img => img.id !== id);
-            renderPreviews();
-        }
-
-        nextBtn.addEventListener('click', async () => {
-            if (images.length === 0) {
-                alert('請至少上傳一樣食材。');
-                return;
-            }
-
-            // 點擊下一步時，先進行圖片驗證
-            const validationPrompt = `你是一位食材分析師。請只分析我上傳的圖片。
-            1. 判斷圖片內容是「零散的食材」還是「一道完整的菜餚」。
-            2. 如果是「一道完整的菜餚」，或者你辨識出的主要食材超過 3 種，請只回傳 {"isValid": false}。
-            3. 如果圖片是「零散的食材」且數量在 3 種（含）以內，請只回傳 {"isValid": true}。
-            請嚴格按照以上 JSON 格式回傳，不要有任何額外的文字或解釋。`;
-
-            const payload = {
-                prompt: validationPrompt,
-                imageData: images.map(img => ({ base64: img.base64, mimeType: img.mimeType })),
-                id_name: currentUserIdName
-            };
-
-            // 【關鍵修正】將驗證食材的 action 改為專用的 'validateIngredients'
-            const result = await callGasApi('validateIngredients', payload, '正在辨識食材...');
-            if (result && result.data.isValid) {
-                showPage('page2'); // 驗證成功，才進入下一步
-            } else {
-                alert('請減少圖片中的食材，以避免辨識錯誤');
-            }
-        });
 
         submitBtn.addEventListener('click', () => callApiAndDisplay(false));
         refineBtn.addEventListener('click', () => callApiAndDisplay(true));
@@ -275,10 +193,13 @@
         async function callApiAndDisplay(isRefine) {
             if (isRefine && refineCount >= 2) {
                 alert('您已達到 2 次修改上限。');
+                refineBtn.disabled = true;
                 return;
             }
 
             let prompt;
+            let loadingMessage;
+
             if (isRefine) {
                 const refineRequest = document.getElementById('refine-input').value;
                 if (!refineRequest) {
@@ -286,42 +207,24 @@
                     return;
                 }
                 prompt = `你是一位專業的廚師。基於以下的食譜，請根據使用者的要求進行修改。
-                原始食譜:
-                菜名: ${recipeData.dishName}
-                食材: ${JSON.stringify(recipeData.ingredients)}
-                步驟: ${JSON.stringify(recipeData.instructions)}
-                
+                原始食譜: 菜名: ${recipeData.dishName}, 食材: ${JSON.stringify(recipeData.ingredients)}, 步驟: ${JSON.stringify(recipeData.instructions)}
                 使用者要求: "${refineRequest}"
-                
                 請以繁體中文提供修改後的新食譜，並嚴格按照以下 JSON 格式回傳，不要有任何額外的文字或解釋：
-                {
-                  "dishName": "新菜餚名稱",
-                  "ingredients": [{"name": "食材", "quantity": "份量"}],
-                  "instructions": ["第一個步驟的文字說明", "第二個步驟的文字說明"]
-                }`;
+                {"dishName": "新菜餚名稱", "ingredients": [{"name": "食材", "quantity": "份量"}], "instructions": ["步驟一", "步驟二"]}`;
+                loadingMessage = 'AI 正在為您修改食譜...';
             } else {
-                const diet = document.getElementById('diet-type').value;
-                const mainCourse = document.getElementById('main-course').value;
-                const difficulty = document.getElementById('difficulty').value;
-                const servings = document.getElementById('servings').value;
-
-                prompt = `你是一位專業的廚師。我已經上傳了食材圖片，請根據這些食材和以下偏好，為我設計一道菜。即使以下偏好與使用者的通用忌口設定衝突，也請優先使用本次的偏好。
-                本次飲食偏好: - 飲食類型: ${diet}, - 主食: ${mainCourse}, - 烹飪難度: ${difficulty}, - 份量: ${servings}
-                請辨識圖片中的主要食材，並以此為基礎，建議一道菜的菜名、所有需要的食材（包含份量）及詳細烹飪步驟。請以繁體中文回復。請嚴格按照以下 JSON 格式回傳，不要有任何額外的文字或解釋：
-                {
-                  "dishName": "建議的菜餚名稱",
-                  "ingredients": [{"name": "食材A", "quantity": "份量A"}],
-                  "instructions": ["步驟一", "步驟二"]
-                }`;
+                prompt = `你是一位專業的廚師。請分析這張菜餚圖片。辨識出菜名，並提供詳細的食材清單（包含份量）和烹飪步驟。請嚴格按照以下 JSON 格式回傳，不要有任何額外的文字或解釋：
+                {"dishName": "菜餚名稱", "ingredients": [{"name": "食材A", "quantity": "份量A"}], "instructions": ["步驟一", "步驟二"]}`;
+                loadingMessage = 'AI 正在分析中，請稍候...';
             }
-
+            
             const payload = {
                 prompt: prompt,
-                imageData: isRefine ? null : images.map(img => ({ base64: img.base64, mimeType: img.mimeType })),
+                imageData: isRefine ? null : [{ base64: imageBase64, mimeType: imageMimeType }],
                 id_name: currentUserIdName
             };
 
-            const result = await callGasApi(isRefine ? 'refineRecipe' : 'createFromIngredients', payload, 'AI 正在生成食譜...');
+            const result = await callGasApi(isRefine ? 'refineRecipe' : 'analyzeDish', payload, loadingMessage);
             if (result) {
                 if (isRefine) refineCount++;
                 recipeData = result.data;
@@ -334,71 +237,56 @@
         function displayResults(data) {
             document.getElementById('dish-name').textContent = data.dishName;
             const conflictWarning = document.getElementById('conflict-warning');
-            conflictWarning.style.display = 'none'; // 每次顯示結果前都先隱藏
+            conflictWarning.style.display = 'none'; // 先隱藏
 
-            const ingredientsList = document.getElementById('ingredients-list');
-            ingredientsList.innerHTML = data.ingredients.map(item => `<li class="list-group-item">${item.name} - ${item.quantity}</li>`).join('');
-            const stepsList = document.getElementById('steps-list'); // 確保 ID 正確
-            stepsList.innerHTML = data.instructions.map(step => `<li class="list-group-item">${step.replace(/^\d+\.\s*/, '')}</li>`).join('');
+            document.getElementById('ingredients-list').innerHTML = data.ingredients.map(item => `<li class="list-group-item">${item.name} - ${item.quantity}</li>`).join('');
+            document.getElementById('steps-list').innerHTML = data.instructions.map(step => `<li class="list-group-item">${step.replace(/^\d+\.\s*/, '')}</li>`).join('');
             document.getElementById('refine-input').value = ''; // 清空修改輸入框
 
-            // 檢查是否有衝突
+            // 檢查 AI 生成的食譜食材是否與忌口衝突
             const userAllergens = userPreferences.allergens ? userPreferences.allergens.split(',').filter(item => item) : [];
-            const mainCourseSelection = document.getElementById('main-course').value;
-
-            // 檢查使用者在當前頁面選擇的主菜是否在忌口清單中
-            const mainCourseConflict = mainCourseSelection !== '不限' && userAllergens.find(allergen => mainCourseSelection.includes(allergen));
-            if (mainCourseConflict) {
-                conflictWarning.textContent = `請注意，您已經選擇「${mainCourseConflict}」作為您的忌口，與您的清單選擇有衝突。`;
+            const conflictIngredient = data.ingredients.find(ing => userAllergens.some(allergen => ing.name.includes(allergen)));
+            if (conflictIngredient) {
+                const conflictingAllergen = userAllergens.find(allergen => conflictIngredient.name.includes(allergen));
+                conflictWarning.textContent = `請注意，您已經選擇「${conflictingAllergen}」作為您的忌口，但此食譜包含「${conflictIngredient.name}」。`;
                 conflictWarning.style.display = 'block';
-            } else {
-                // 如果頁面選擇沒有衝突，再檢查 AI 生成的食譜食材是否與忌口衝突
-                const conflictIngredient = data.ingredients.find(ing => userAllergens.some(allergen => ing.name.includes(allergen)));
-                if (conflictIngredient) {
-                    const conflictingAllergen = userAllergens.find(allergen => conflictIngredient.name.includes(allergen));
-                    conflictWarning.textContent = `請注意，您已經選擇「${conflictingAllergen}」作為您的忌口，但此食譜包含「${conflictIngredient.name}」。`;
-                    conflictWarning.style.display = 'block';
-                }
             }
         }
 
+        // 儲存食譜
         saveBtn.addEventListener('click', async () => {
-            if (!recipeData || !currentUserIdName) {
-                alert('沒有食譜資料或無法識別使用者身份，無法儲存。');
+            if (!recipeData) {
+                alert('沒有食譜資料可儲存。');
                 return;
             }
 
             const payload = {
                 payload: {
-                    id_name: currentUserIdName,
-                    source: '食材上傳',
+                    id_name: currentUserIdName, // 使用當前登入者的 ID
+                    source: '料理辨識', // 標明資料來源
                     dishName: recipeData.dishName,
                     ingredients: recipeData.ingredients,
                     instructions: recipeData.instructions
                 }
             };
-
-            // 使用共用的 callGasApi 函式，並傳入自訂的讀取文字
             const result = await callGasApi('saveRecipeToSheet', payload, '正在為您儲存食譜...');
             if (result) {
                 alert('食譜已成功儲存！');
             }
         });
 
-        // 頁面切換函式 (與 login.html 保持一致)
+        // 頁面切換函式
         function showPage(pageId) {
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
         }
 
-        // 覆寫 app.js 中的 initializeCommonFeatures，加入此頁面的特定邏輯
+        // 此頁面的特定初始化邏輯
         async function initializePageSpecificFeatures() {
             const loggedInUser = localStorage.getItem('loggedInUser');
             if (!loggedInUser) {
                 alert('無法識別使用者身份，將返回登入頁面。');
-                window.location.href = 'index.html'; // 確保跳轉
+                window.location.href = 'index.html';
             } else {
                 currentUserIdName = JSON.parse(loggedInUser).idName;
                 // 頁面載入時，就獲取一次最新的使用者偏好
@@ -427,41 +315,6 @@
                 console.error("無法在背景獲取使用者偏好:", error);
             }
         }
-
-        // --- 選單連動邏輯 (從 options.html 複製而來) ---
-        const dietTypeSelect = document.getElementById('diet-type');
-        const mainCourseSelect = document.getElementById('main-course');
-        const mainCourseMessage = document.getElementById('main-course-message');
-        const porkOption = mainCourseSelect.querySelector('option[value="豬"]');
-
-        dietTypeSelect.addEventListener('change', (event) => {
-            const selectedDiet = event.target.value;
-
-            // 先重設所有狀態
-            mainCourseSelect.disabled = false;
-            mainCourseMessage.style.display = 'none';
-            if (porkOption) porkOption.style.display = ''; // 顯示豬肉選項
-
-            if (selectedDiet === '純素' || selectedDiet === '蛋奶素') {
-                // 當選擇素食時，禁用主菜選項並顯示提示
-                mainCourseSelect.value = '不限'; // 重設選項
-                mainCourseSelect.disabled = true;
-                mainCourseMessage.style.display = 'block';
-            } else if (selectedDiet === '清真飲食') {
-                // 當選擇清真時，隱藏豬肉選項
-                if (porkOption) {
-                    porkOption.style.display = 'none';
-                }
-                // 如果剛好選到豬肉，就重設
-                if (mainCourseSelect.value === '豬') {
-                    mainCourseSelect.value = '不限';
-                }
-            }
-            // 其他情況 (如葷食) 會維持重設後的預設狀態 (主菜可選，豬肉可見)
-        });
-
-        // 初始觸發一次，確保頁面載入時狀態正確
-        dietTypeSelect.dispatchEvent(new Event('change'));
     </script>
 </body>
 </html>
