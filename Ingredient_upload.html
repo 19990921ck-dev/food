@@ -8,6 +8,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts for Zen Maru Gothic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -21,13 +25,13 @@
             <div class="image-upload-container">
                 <p>請上傳或拍攝食材照片 (最多3樣)</p>
                 <input type="file" id="image-input" accept="image/*" multiple style="display: none;">
-                <button onclick="document.getElementById('image-input').click();" class="btn btn-primary">上傳照片</button>
-                <button id="camera-btn" class="btn btn-info text-white">手機拍照</button>
+                <button onclick="document.getElementById('image-input').click();" class="feature-button-style">上傳照片</button>
+                <button id="camera-btn" class="feature-button-style feature-button-secondary">手機拍照</button>
                 <video id="camera-video" playsinline autoplay style="display:none; width: 100%; border-radius: 5px; margin-top: 10px;"></video>
                 <div id="image-previews-container"></div>
                 <canvas id="camera-canvas" style="display:none;"></canvas>
             </div>
-            <button id="next-btn" class="btn btn-primary mt-3" disabled>下一步</button>
+            <button id="next-btn" class="feature-button-style mt-3" disabled>下一步</button>
         </div>
 
         <!-- 頁面二：選擇偏好 -->
@@ -72,14 +76,14 @@
                     <option value="4人份">4人份</option>
                 </select>
             </div>
-            <button id="submit-btn" class="btn btn-primary">生成食譜</button>
+            <button id="submit-btn" class="feature-button-style">生成食譜</button>
         </div>
 
         <!-- 頁面三：結果 -->
         <div id="page3" class="page">
             <h2 id="dish-name" class="mb-4"></h2>
             <!-- 在 page3 的 <h2> 標籤下方加入 -->
-            <div id="conflict-warning" class="alert alert-warning" style="display: none;"></div>
+            <div id="conflict-warning" class="text-muted mb-3" style="display: none;"></div>
             <div class="mb-4">
                 <h4 class="mb-2"><i class="fa-solid fa-carrot me-2 text-warning"></i>精選食材</h4>
                 <ul id="ingredients-list" class="list-group"></ul>
@@ -92,12 +96,12 @@
                 <label for="refine-input">不滿意嗎？告訴 AI 如何修改 (例如：換成雞肉、不要加辣)</label>
                 <textarea id="refine-input" rows="2" class="form-control"></textarea>
                 <div class="form-text text-muted small mt-1">修改上限為2次</div>
-                <button id="refine-btn" class="btn btn-info text-white mt-2">請 AI 修改</button>
+                <button id="refine-btn" class="feature-button-style feature-button-secondary mt-2">請 AI 修改</button>
             </div>
             <div class="button-group">
-                <button id="save-btn" class="btn btn-success">儲存食譜</button>
-                <button onclick="location.reload()" class="btn btn-secondary">再次分析</button>
-                <a href="index.html" class="btn btn-outline-secondary">返回功能選單</a>
+                <button id="save-btn" class="feature-button-style" style="background-color: var(--theme-success);">儲存食譜</button>
+                <button onclick="location.reload()" class="feature-button-style" style="background-color: #6c757d;">再次分析</button>
+                <a href="index.html" class="btn btn-outline-secondary mt-3">返回功能選單</a>
             </div>
         </div>
     </main>
@@ -137,6 +141,7 @@
         let recipeData = null;
         let refineCount = 0; // 用於計算修改次數
         let currentUserIdName = null;
+        let userPreferences = { allergens: '', style: '' }; // 用於儲存使用者的全域偏好
 
         imageInput.addEventListener('change', (event) => {
             const files = event.target.files;
@@ -237,7 +242,8 @@
                 id_name: currentUserIdName
             };
 
-            const result = await callGasApi('createFromIngredients', payload, '正在辨識食材...');
+            // 【關鍵修正】將驗證食材的 action 改為專用的 'validateIngredients'
+            const result = await callGasApi('validateIngredients', payload, '正在辨識食材...');
             if (result && result.data.isValid) {
                 showPage('page2'); // 驗證成功，才進入下一步
             } else {
@@ -249,12 +255,8 @@
         refineBtn.addEventListener('click', () => callApiAndDisplay(true));
 
         async function callApiAndDisplay(isRefine) {
-            loadingOverlay.style.display = 'flex';
-
             if (isRefine && refineCount >= 2) {
                 alert('您已達到 2 次修改上限。');
-                refineBtn.disabled = true;
-                loadingOverlay.style.display = 'none';
                 return;
             }
 
@@ -263,7 +265,6 @@
                 const refineRequest = document.getElementById('refine-input').value;
                 if (!refineRequest) {
                     alert('請輸入修改需求。');
-                    loadingOverlay.style.display = 'none';
                     return;
                 }
                 prompt = `你是一位專業的廚師。基於以下的食譜，請根據使用者的要求進行修改。
@@ -286,8 +287,8 @@
                 const difficulty = document.getElementById('difficulty').value;
                 const servings = document.getElementById('servings').value;
 
-                prompt = `你是一位專業的廚師。我已經上傳了食材圖片，請根據這些食材和以下偏好，為我設計一道菜。
-                飲食偏好: - 飲食類型: ${diet}, - 主食: ${mainCourse}, - 烹飪難度: ${difficulty}, - 份量: ${servings}
+                prompt = `你是一位專業的廚師。我已經上傳了食材圖片，請根據這些食材和以下偏好，為我設計一道菜。即使以下偏好與使用者的通用忌口設定衝突，也請優先使用本次的偏好。
+                本次飲食偏好: - 飲食類型: ${diet}, - 主食: ${mainCourse}, - 烹飪難度: ${difficulty}, - 份量: ${servings}
                 請辨識圖片中的主要食材，並以此為基礎，建議一道菜的菜名、所有需要的食材（包含份量）及詳細烹飪步驟。請以繁體中文回復。請嚴格按照以下 JSON 格式回傳，不要有任何額外的文字或解釋：
                 {
                   "dishName": "建議的菜餚名稱",
@@ -299,8 +300,7 @@
             const payload = {
                 prompt: prompt,
                 imageData: isRefine ? null : images.map(img => ({ base64: img.base64, mimeType: img.mimeType })),
-                id_name: currentUserIdName,
-                action: isRefine ? 'refineRecipe' : 'createFromIngredients' // 【關鍵修正】: 補上 action 參數
+                id_name: currentUserIdName
             };
 
             const result = await callGasApi(isRefine ? 'refineRecipe' : 'createFromIngredients', payload, 'AI 正在生成食譜...');
@@ -308,13 +308,6 @@
                 if (isRefine) refineCount++;
                 recipeData = result.data;
                 recipeData.idName = 'recipe-' + Date.now();
-
-                // 檢查後端是否有回傳衝突訊息
-                if (result.conflict) {
-                    const conflictWarning = document.getElementById('conflict-warning'); // 假設結果頁面有此元素
-                    conflictWarning.textContent = result.conflict;
-                    conflictWarning.style.display = 'block';
-                }
                 displayResults(recipeData);
                 showPage('page3');
             }
@@ -322,12 +315,33 @@
 
         function displayResults(data) {
             document.getElementById('dish-name').textContent = data.dishName;
-            const numerals = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二', '十三', '十四', '十五'];
+            const conflictWarning = document.getElementById('conflict-warning');
+            conflictWarning.style.display = 'none'; // 每次顯示結果前都先隱藏
+
             const ingredientsList = document.getElementById('ingredients-list');
             ingredientsList.innerHTML = data.ingredients.map(item => `<li class="list-group-item">${item.name} - ${item.quantity}</li>`).join('');
             const stepsList = document.getElementById('steps-list'); // 確保 ID 正確
             stepsList.innerHTML = data.instructions.map(step => `<li class="list-group-item">${step.replace(/^\d+\.\s*/, '')}</li>`).join('');
             document.getElementById('refine-input').value = ''; // 清空修改輸入框
+
+            // 檢查是否有衝突
+            const userAllergens = userPreferences.allergens ? userPreferences.allergens.split(',').filter(item => item) : [];
+            const mainCourseSelection = document.getElementById('main-course').value;
+
+            // 檢查使用者在當前頁面選擇的主菜是否在忌口清單中
+            const mainCourseConflict = mainCourseSelection !== '不限' && userAllergens.find(allergen => mainCourseSelection.includes(allergen));
+            if (mainCourseConflict) {
+                conflictWarning.textContent = `請注意，您已經選擇「${mainCourseConflict}」作為您的忌口，與您的清單選擇有衝突。`;
+                conflictWarning.style.display = 'block';
+            } else {
+                // 如果頁面選擇沒有衝突，再檢查 AI 生成的食譜食材是否與忌口衝突
+                const conflictIngredient = data.ingredients.find(ing => userAllergens.some(allergen => ing.name.includes(allergen)));
+                if (conflictIngredient) {
+                    const conflictingAllergen = userAllergens.find(allergen => conflictIngredient.name.includes(allergen));
+                    conflictWarning.textContent = `請注意，您已經選擇「${conflictingAllergen}」作為您的忌口，但此食譜包含「${conflictIngredient.name}」。`;
+                    conflictWarning.style.display = 'block';
+                }
+            }
         }
 
         saveBtn.addEventListener('click', async () => {
@@ -362,18 +376,39 @@
         }
 
         // 覆寫 app.js 中的 initializeCommonFeatures，加入此頁面的特定邏輯
-        function initializePageSpecificFeatures() {
+        async function initializePageSpecificFeatures() {
             const loggedInUser = localStorage.getItem('loggedInUser');
             if (!loggedInUser) {
                 alert('無法識別使用者身份，將返回登入頁面。');
                 window.location.href = 'index.html'; // 確保跳轉
             } else {
                 currentUserIdName = JSON.parse(loggedInUser).idName;
+                // 頁面載入時，就獲取一次最新的使用者偏好
+                await fetchUserPreferences();
             }
         }
 
-        // 確保在 app.js 之後執行
-        document.addEventListener('DOMContentLoaded', initializePageSpecificFeatures);
+        // 獲取使用者偏好的函式
+        async function fetchUserPreferences() {
+            if (!currentUserIdName) return;
+            // 使用一個不安靜的 fetch，避免顯示 loading
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'getUserPreferences', id_name: currentUserIdName })
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.status === 'success' && result.data) {
+                        userPreferences = result.data;
+                    }
+                }
+            } catch (error) {
+                console.error("無法在背景獲取使用者偏好:", error);
+            }
+        }
 
         // --- 選單連動邏輯 (從 options.html 複製而來) ---
         const dietTypeSelect = document.getElementById('diet-type');
