@@ -7,7 +7,7 @@
 // --- GLOBAL CONFIGURATION ---
 const HOME_SHEET_ID = '1bPmwKtm6Ak8mnS1ssIcE9VK2hNnMuFF-EWcu6ANRXVw'; // 主控使用者資料的 Sheet ID
 const TARGET_FOLDER_ID = '1GxENSoBnnCI8ecFoSf-CNshPpvnS1SoP'; // 您指定的 Google Drive 資料夾 ID
-const USERS_SHEET_NAME = '使用者資料'; // 修正：將工作表名稱更新為 "使用者資料"
+const USERS_SHEET_NAME = '使用者資料'; // 與 README.md 保持一致
 
 /**
  * Main entry point for all POST requests from the web app.
@@ -18,7 +18,7 @@ const USERS_SHEET_NAME = '使用者資料'; // 修正：將工作表名稱更新
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
-    const action = payload.action;
+    const { action } = payload;
     let result;
 
     switch (action) {
@@ -45,6 +45,12 @@ function doPost(e) {
         break;
       case 'saveRecipeToSheet':
         result = handleSaveRecipeToSheet(payload.payload);
+        break;
+      case 'getUserPreferences':
+        result = { status: 'success', data: getUserPreferences(payload.id_name) };
+        break;
+      case 'getHistory':
+        result = handleGetHistory(payload);
         break;
       default:
         throw new Error(`Unknown action: ${action}`);
@@ -81,7 +87,7 @@ function handleRegister(payload) {
 
   const salt = Utilities.getUuid();
   const pwHash = hashPassword(pw, salt);
-  const newId = sheet.getLastRow(); // Simple ID generation
+  const newId = sheet.getLastRow(); // 簡易 ID 生成，注意：若有刪除列，此方法可能導致 ID 重複
 
   const newRow = Array(headers.length).fill('');
   newRow[headers.indexOf('ID')] = newId;
@@ -185,6 +191,42 @@ function handleSaveRecipeToSheet(payload) {
 }
 
 /**
+ * Handles fetching historical records for a user from a specific source sheet.
+ */
+function handleGetHistory(payload) {
+  const { id_name, source } = payload;
+  if (!id_name || !source) {
+    throw new Error("請求中缺少 'id_name' 或 'source' 參數。");
+  }
+
+  const targetFolder = DriveApp.getFolderById(TARGET_FOLDER_ID);
+  const files = targetFolder.getFilesByName(id_name);
+
+  if (!files.hasNext()) {
+    throw new Error(`找不到使用者 ${id_name} 的專屬食譜庫。`);
+  }
+
+  const userSheet = SpreadsheetApp.open(files.next());
+  const sourceSheet = userSheet.getSheetByName(source);
+
+  if (!sourceSheet || sourceSheet.getLastRow() <= 1) {
+    return { status: 'success', data: [] }; // 沒有分頁或沒有資料，回傳空陣列
+  }
+
+  const data = sourceSheet.getRange(2, 1, sourceSheet.getLastRow() - 1, 2).getValues();
+  const history = data.map(row => {
+    const recipeData = JSON.parse(row[1]);
+    return {
+      date: row[0],
+      dishName: recipeData.dishName, // 為了方便前端顯示，將菜名提取出來
+      recipe: recipeData // 保留完整的食譜物件
+    };
+  }).sort((a, b) => new Date(b.date) - new Date(a.date)); // 依日期降冪排序
+
+  return { status: 'success', data: history };
+}
+
+/**
  * Fetches a daily recommendation and saves it.
  */
 function handleGetDailyRecommendation(payload) {
@@ -236,8 +278,9 @@ function handleGetDailyRecommendation(payload) {
     }
 
     // 如果找不到目標日期的食譜，則回傳最新的一筆食譜作為備案
-    Logger.log(`在 ${formattedTargetDate} 找不到 ${id_name} 的食譜，回傳最新一筆資料。`);
-    return { status: 'success', data: JSON.parse(data[data.length - 1][1]) };
+    // 【關鍵修正】: 如果找不到目標日期的食譜，則生成一份新的
+    Logger.log(`在 ${formattedTargetDate} 找不到 ${id_name} 的食譜，將即時生成一份。`);
+    return { status: 'success', data: generateRecipeForUser(id_name) };
 }
 
 /**
@@ -268,8 +311,32 @@ function generateRecipeForUser(id_name) {
  * Generic handler for AI recipe generation actions.
  */
 function handleGetAiRecipe(payload) {
-  const { id_name, prompt, imageData } = payload;
+  const { id_name, prompt, imageData, action } = payload;
   const preferences = getUserPreferences(id_name);
+  let conflictMessage = null;
+
+  // 僅在 "食材上傳" 流程中進行衝突檢測
+  if (action === 'createFromIngredients' && imageData && imageData.length > 0) {
+    const userAllergens = preferences.allergens ? preferences.allergens.split(',').map(s => s.trim()).filter(Boolean) : [];
+    if (userAllergens.length > 0) {
+      // 步驟 1: 讓 AI 辨識圖片中的主要食材
+      const identificationPrompt = "請辨識這張圖片中的主要食材是什麼，請只回傳食材的中文名稱，用逗號分隔，例如：'豬肉, 青椒, 洋蔥'。";
+      try {
+        const identifiedIngredientsText = callGeminiAPI(identificationPrompt, imageData, true); // true 表示這是純文字回應
+        const identifiedIngredients = identifiedIngredientsText.split(',').map(s => s.trim());
+
+        // 步驟 2: 比對忌口清單
+        const conflicts = identifiedIngredients.filter(ingredient => userAllergens.some(allergen => ingredient.includes(allergen)));
+        
+        if (conflicts.length > 0) {
+          conflictMessage = `提醒：您上傳的食材中可能包含「${conflicts.join(', ')}」，這與您設定的忌口偏好衝突，請多加注意。`;
+        }
+      } catch (e) {
+        Logger.log(`在食材上傳流程中，辨識食材時發生錯誤: ${e.message}`);
+        // 辨識失敗不中斷流程，繼續生成食譜
+      }
+    }
+  }
 
   const fullPrompt = `
   使用者的全域飲食偏好設定如下，請將其納入考量：
@@ -283,7 +350,8 @@ function handleGetAiRecipe(payload) {
   `;
 
   const aiResult = callGeminiAPI(fullPrompt, imageData);
-  return { success: true, data: aiResult };
+  // 將食譜結果和衝突訊息一起回傳
+  return { status: 'success', data: aiResult, conflict: conflictMessage };
 }
 
 /**
@@ -296,7 +364,7 @@ function getUsersSheet() {
   }
   const sheet = ss.getSheetByName(USERS_SHEET_NAME);
   if (!sheet) {
-    throw new Error(`後端錯誤：在主控試算表中找不到名為 "${USERS_SHEET_NAME}" 的工作表。`);
+    throw new Error(`後端錯誤：在主控試算表中找不到名為 "${USERS_SHEET_NAME}" 的工作表。請檢查工作表名稱是否正確。`);
   }
   return sheet;
 }
@@ -308,15 +376,18 @@ function getUsersSheet() {
  * Creates a new personal spreadsheet for a user in the target folder.
  */
 function createUserSheet(id_name) {
-  const targetFolder = DriveApp.getFolderById(TARGET_FOLDER_ID);
   const newSpreadsheet = SpreadsheetApp.create(id_name);
   const file = DriveApp.getFileById(newSpreadsheet.getId());
 
   // Move the file to the target folder
+  const targetFolder = DriveApp.getFolderById(TARGET_FOLDER_ID);
   targetFolder.addFile(file);
   DriveApp.getRootFolder().removeFile(file); // Clean up from root
 
-  // 1. 先新增您需要的四個分頁
+  // 刪除預設的工作表 "Sheet1"
+  const defaultSheet = newSpreadsheet.getSheetByName('Sheet1');
+  if (defaultSheet) newSpreadsheet.deleteSheet(defaultSheet);
+
   const sheetNames = ["每日推薦", "食材上傳", "料理辨識", "選項推薦"];
   sheetNames.forEach(name => {
     const sheet = newSpreadsheet.insertSheet(name);
@@ -346,32 +417,36 @@ function getUserPreferences(id_name) {
 /**
  * Calls the Gemini Pro Vision API.
  */
-function callGeminiAPI(prompt, imageData) {
-  // 警告：直接將 API 金鑰寫在程式碼中可能存在安全風險。建議優先使用「指令碼屬性」來管理。
-  const API_KEY = "AIzaSyClyION-kBcA1ZLbQ7PH-xQzoikkXgw1Ak"; // <--- 已更新您的 API 金鑰
+function callGeminiAPI(prompt, imageData, isTextOnlyResponse = false) {
+  // 警告：直接將 API 金鑰寫在程式碼中會增加外洩風險。您已確認了解此風險。
+  const API_KEY = "AIzaSyDHZREK9pI8jtOrHe78Z2JHjXhx95bQUQY";
 
-  if (!API_KEY || API_KEY === "請在這裡貼上您的Gemini API金鑰") {
-    throw new Error("Gemini API 金鑰尚未在 GS 程式碼中設定，請檢查 Code.gs 檔案。");
+  if (!API_KEY) {
+    throw new Error("後端錯誤：Gemini API 金鑰尚未在 GS 程式碼中設定。");
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
+  // 【關鍵修正】: 使用 v1beta 端點搭配官方最新的 gemini-1.5-flash 模型，以支援圖片分析。
+  // 請務必確認您已在 Google Cloud Console 中為您的專案啟用了 "Vertex AI API"。
+  const model = "gemini-2.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
 
   const requestBody = {
     contents: [{
       parts: [{ text: prompt }]
     }],
-    generationConfig: {
-      "response_mime_type": "application/json",
-    }
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+    ]
   };
 
+  // 如果有圖片資料，將其加入到請求中
   if (imageData && imageData.length > 0) {
     imageData.forEach(img => {
       requestBody.contents[0].parts.push({
-        inline_data: {
-          mime_type: img.mimeType,
-          data: img.base64
-        }
+        inline_data: { mime_type: img.mimeType, data: img.base64 }
       });
     });
   }
@@ -385,19 +460,35 @@ function callGeminiAPI(prompt, imageData) {
 
   const response = UrlFetchApp.fetch(url, options);
   const responseText = response.getContentText();
-  const jsonResponse = JSON.parse(responseText);
+  const responseCode = response.getResponseCode();
 
-  if (jsonResponse.error) {
-    throw new Error(`Gemini API Error: ${jsonResponse.error.message}`);
-  }
-  
-  const candidate = jsonResponse.candidates && jsonResponse.candidates[0];
-  if (!candidate || !candidate.content || !candidate.content.parts || !candidate.content.parts[0].text) {
-    throw new Error('從 AI 收到的回應格式不正確。');
-  }
+  if (responseCode === 200) {
+    try {
+      const result = JSON.parse(responseText);
+      if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0].text) {
+        let jsonText = result.candidates[0].content.parts[0].text;
+        
+        // 【關鍵修正】: 清理 Gemini 回應中可能包含的 Markdown 標記
+        // 使用正規表示式尋找被 ``` 包圍的 JSON 內容
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonText = jsonMatch[0]; // 只取出 JSON 物件的部分
+        }
 
-  // The response from Gemini is a JSON string, so we need to parse it again.
-  return JSON.parse(candidate.content.parts[0].text);
+        if (isTextOnlyResponse) {
+          return jsonText; // 如果只需要純文字，直接回傳
+        } else {
+          return JSON.parse(jsonText); // 否則解析為 JSON 物件
+        }
+      } else {
+        throw new Error("Gemini 回應格式無效: " + responseText);
+      }
+    } catch (e) {
+      throw new Error("解析 Gemini 回應失敗: " + e.message + ". 原始回應: " + responseText);
+    }
+  } else {
+    throw new Error(`Gemini API 錯誤: ${responseCode} - ${responseText}`);
+  }
 }
 
 /**
