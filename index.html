@@ -217,8 +217,23 @@
         window.showPage = function(pageId) {
             const mainContent = document.getElementById('main-content');
             const authContainer = document.getElementById('auth-container');
+            const headerPlaceholder = document.getElementById('header-placeholder');
+
+            // 【需求修改】: 在新使用者設定偏好與忌口時，隱藏頂部導覽列
+            if (['style-page', 'allergens-page'].includes(pageId)) {
+                // 透過檢查 allergens 是否已存在於 localStorage 來判斷是否為「新註冊流程」
+                const user = JSON.parse(localStorage.getItem('loggedInUser') || '{}');
+                if (user && user.allergens === undefined) { // 如果 allergens 欄位不存在，代表是新註冊
+                    headerPlaceholder.style.display = 'none';
+                } else {
+                    headerPlaceholder.style.display = 'block';
+                }
+            } else {
+                headerPlaceholder.style.display = 'block'; // 其他頁面一律顯示
+            }
+
             // 如果是登入後的頁面，顯示 header 和 main content
-            if (['allergens-page', 'style-page', 'feature-selection-page', 'history-source-selection-page', 'history-list-page', 'history-detail-page'].includes(pageId)) {
+            if (!['login-page', 'register-page'].includes(pageId)) {
                 mainContent.style.display = 'block';
                 authContainer.style.display = 'none'; // 隱藏登入區塊
             } else { // 否則顯示登入/註冊區塊
@@ -327,6 +342,7 @@
                 localStorage.setItem('loggedInUser', JSON.stringify({
                     idName: idName,
                     displayName: username // 註冊時使用輸入的 username
+                    // 此時沒有 allergens 欄位，這將成為判斷新註冊流程的依據
                 }));
                 updateHeaderUsername(); // 即時更新右上角使用者名稱
                 showPage('style-page'); // 註冊後先到料理風味頁
@@ -379,7 +395,14 @@
             // 將飲食忌口和料理風味一起送出
             const result = await callGasApi('updateAllergens', { id_name: currentUsername, allergens: allergensStr, style: styleStr }, '正在儲存設定...');
             if (result && result.status === 'success') {
-                // 註冊流程完成後，也跳轉到功能選擇頁
+                // 【對應修改】: 設定完成後，將偏好寫入 localStorage，這樣下次就不會再隱藏 header
+                const user = JSON.parse(localStorage.getItem('loggedInUser'));
+                if (user) {
+                    user.allergens = allergensStr;
+                    user.style = styleStr;
+                    localStorage.setItem('loggedInUser', JSON.stringify(user));
+                }
+
                 const loggedInUser = localStorage.getItem('loggedInUser');
                 if (loggedInUser) {
                     document.getElementById('welcome-message').textContent = `設定完成，歡迎 ${JSON.parse(loggedInUser).displayName}！`;
