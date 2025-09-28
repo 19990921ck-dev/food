@@ -96,11 +96,18 @@ function initializeCommonFeatures() {
     if (resetSettingsBtn) {
         resetSettingsBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            // 統一跳轉邏輯：無論在哪個頁面，都跳轉回 index.html 的設定頁
-            // index.html 自己的邏輯會處理 hash 並顯示正確頁面
-            // 修正：使用動態產生的 homeUrl 進行跳轉
-            const homeUrl = (typeof BASE_PATH !== 'undefined' && BASE_PATH) ? `${BASE_PATH}index.html` : 'index.html';
-            window.location.href = `${homeUrl}#style-page`;
+            
+            // 判斷當前是否在 index.html
+            const isIndexPage = window.location.pathname.endsWith('/') || window.location.pathname.endsWith('/index.html');
+
+            if (isIndexPage && typeof window.showPage === 'function') {
+                // 如果在 index.html 且 showPage 函式存在，直接呼叫函式切換頁面，避免重整
+                window.showPage('style-page');
+            } else {
+                // 如果在其他頁面，則跳轉回 index.html 的設定頁
+                const homeUrl = (typeof BASE_PATH !== 'undefined' && BASE_PATH) ? `${BASE_PATH}index.html` : 'index.html';
+                window.location.href = `${homeUrl}#style-page`;
+            }
         });
     }
  
