@@ -115,14 +115,16 @@ body {
 }
 
 .navigation-menu a {
-    padding: 0.5rem 1rem;
-    color: #333;
+    padding: 0.5rem 1rem; /* 增加上下內距，讓點擊區域更大 */
+    color: var(--theme-primary); /* 【需求修改】將文字顏色改為與 Logo 一致的主題色 */
     text-decoration: none;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, color 0.2s; /* 加入顏色過渡效果 */
+    font-weight: 500; /* 讓字體稍微加粗，更清晰 */
 }
 
 .navigation-menu a:hover {
-    background-color: #f0f0f0;
+    color: #fff; /* 滑鼠懸停時文字變白 */
+    background-color: var(--theme-primary); /* 背景變為主題色 */
 }
 .app-header {
     background-color: #fff;
