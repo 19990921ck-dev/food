@@ -279,10 +279,10 @@ body {
 /* --- 圖片預覽 (食材上傳) --- */
 #image-previews-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
 .preview-item { position: relative; }
-.preview-item img { max-width: 100px; max-height: 100px; border-radius: 5px; object-fit: cover; }
+.preview-item img { max-width: 200px; max-height: 200px; border-radius: 5px; object-fit: cover; border: 1px solid #ddd; padding: 3px; background-color: #fff;}
 .preview-item .delete-icon { position: absolute; top: -8px; right: -8px; background: white; border-radius: 50%; cursor: pointer; width: 22px; height: 22px; text-align: center; line-height: 20px; font-weight: bold; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
 /* --- 圖片預覽 (料理辨識) --- */
 #image-preview-container { position: relative; display: inline-block; margin-top: 15px; }
-#image-preview { max-width: 100%; max-height: 300px; border-radius: 8px; display: none; }
+#image-preview { max-width: 200px; max-height: 200px; border-radius: 5px; display: none; border: 1px solid #ddd; padding: 3px; background-color: #fff; }
 #delete-icon { position: absolute; top: 5px; right: 5px; background: white; border-radius: 50%; cursor: pointer; width: 24px; height: 24px; text-align: center; line-height: 22px; font-weight: bold; border: 1px solid #ccc; display: none; }
