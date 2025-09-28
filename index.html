@@ -187,16 +187,10 @@
     <!-- 頁面主要邏輯 -->
     <script>
         // This function needs to be in the global scope for app.js to find it.
-        function initializePage() {
-        // --- DOM ELEMENTS ---
-        const pages = document.querySelectorAll('.page');
-        const authContainer = document.getElementById('auth-container');
-        const mainContent = document.getElementById('main-content');
-        const loadingOverlay = document.getElementById('loading-overlay');
-        let currentUsername = null; // 用於在註冊後儲存使用者名稱
-
         // --- PAGE NAVIGATION (exposed to global scope for header link) ---
         window.showPage = function(pageId) {
+            const mainContent = document.getElementById('main-content');
+            const authContainer = document.getElementById('auth-container');
             // 如果是登入後的頁面，顯示 header 和 main content
             if (['allergens-page', 'style-page', 'feature-selection-page', 'history-source-selection-page', 'history-list-page', 'history-detail-page'].includes(pageId)) {
                 mainContent.style.display = 'block';
@@ -206,11 +200,16 @@
                 authContainer.style.display = 'flex'; // 顯示登入區塊
             }
 
-            pages.forEach(page => {
-                page.classList.remove('active');
-            });
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
         }
+        function initializePage() {
+        // --- DOM ELEMENTS ---
+        const pages = document.querySelectorAll('.page');
+        const authContainer = document.getElementById('auth-container');
+        const mainContent = document.getElementById('main-content');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        let currentUsername = null; // 用於在註冊後儲存使用者名稱
 
         function showError(page, message) {
             const errorEl = document.getElementById(`${page}-error`);
@@ -303,6 +302,7 @@
                     idName: idName,
                     displayName: username // 註冊時使用輸入的 username
                 }));
+                updateHeaderUsername(); // 即時更新右上角使用者名稱
                 showPage('style-page'); // 註冊後先到料理風味頁
             }
         });
@@ -320,6 +320,7 @@
                     idName: idName,
                     displayName: displayName
                 }));
+                updateHeaderUsername(); // 即時更新右上角使用者名稱
                 initializeApp(); // 登入成功後直接重新初始化，避免頁面重載
             }
         });
@@ -442,59 +443,59 @@
         setupCheckboxGroup('allergens', 'cb-無', 'cb-allergens-all', 'allergens-submit-btn');
         }
 
-        // 將 showHistoryDetail 移到 initializePage 外部，使其成為全域函式
-        function showHistoryDetail(index) {
-            // 從全域 window 物件讀取資料
-            const item = window.fullHistoryData[index];
-            const date = new Date(item.date);
-            const formattedDate = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+    // 將 showHistoryDetail 移到 initializePage 外部，使其成為全域函式
+    function showHistoryDetail(index) {
+        // 從全域 window 物件讀取資料
+        const item = window.fullHistoryData[index];
+        const date = new Date(item.date);
+        const formattedDate = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
 
-            document.getElementById('history-dish-name').textContent = item.recipe.dishName;
-            document.getElementById('history-dish-date').textContent = `紀錄日期：${formattedDate}`;
-            document.getElementById('history-ingredients-list').innerHTML = item.recipe.ingredients.map(ing => `<li class="list-group-item">${ing.name} - ${ing.quantity}</li>`).join('');
-            document.getElementById('history-steps-list').innerHTML = item.recipe.instructions.map(step => `<li class="list-group-item">${step.replace(/^\d+\.\s*/, '')}</li>`).join('');
-            // 確保 showPage 也是全域的
-            window.showPage('history-detail-page');
+        document.getElementById('history-dish-name').textContent = item.recipe.dishName;
+        document.getElementById('history-dish-date').textContent = `紀錄日期：${formattedDate}`;
+        document.getElementById('history-ingredients-list').innerHTML = item.recipe.ingredients.map(ing => `<li class="list-group-item">${ing.name} - ${ing.quantity}</li>`).join('');
+        document.getElementById('history-steps-list').innerHTML = item.recipe.instructions.map(step => `<li class="list-group-item">${step.replace(/^\d+\.\s*/, '')}</li>`).join('');
+        // 確保 showPage 也是全域的
+        window.showPage('history-detail-page');
+    }
+
+    // 將 fetchHistory 移到 initializePage 外部，使其成為全域函式
+    async function fetchHistory(source) {
+        // 確保 currentUsername 存在
+        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+        if (!loggedInUser || !loggedInUser.idName) {
+            alert('無法識別使用者身份，請重新登入。');
+            return;
         }
+        const currentUsername = loggedInUser.idName;
 
-        // 將 fetchHistory 移到 initializePage 外部，使其成為全域函式
-        async function fetchHistory(source) {
-            // 確保 currentUsername 存在
-            const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-            if (!loggedInUser || !loggedInUser.idName) {
-                alert('無法識別使用者身份，請重新登入。');
-                return;
+        const payload = { id_name: currentUsername, source: source };
+        const result = await callGasApi('getHistory', payload, `正在查詢${source}紀錄...`);
+
+        if (result && result.data) {
+            // 注意：fullHistoryData 需要在全域範圍內可存取
+            window.fullHistoryData = result.data;
+            const container = document.getElementById('history-list-container');
+            document.getElementById('history-list-title').textContent = `${source} - 歷史紀錄`;
+            container.innerHTML = '';
+
+            if (window.fullHistoryData.length === 0) {
+                container.innerHTML = '<p class="text-muted">沒有找到任何紀錄。</p>';
+            } else {
+                // 【關鍵修正】: 將渲染列表的邏輯加回來
+                window.fullHistoryData.forEach((item, index) => {
+                    const date = new Date(item.date);
+                    const formattedDate = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'list-group-item list-group-item-action';
+                    button.textContent = `${formattedDate}_${item.dishName}`;
+                    button.onclick = () => showHistoryDetail(index); // 呼叫全域的 showHistoryDetail
+                    container.appendChild(button);
+                });
             }
-            const currentUsername = loggedInUser.idName;
-
-            const payload = { id_name: currentUsername, source: source };
-            const result = await callGasApi('getHistory', payload, `正在查詢${source}紀錄...`);
-
-            if (result && result.data) {
-                // 注意：fullHistoryData 需要在全域範圍內可存取
-                window.fullHistoryData = result.data;
-                const container = document.getElementById('history-list-container');
-                document.getElementById('history-list-title').textContent = `${source} - 歷史紀錄`;
-                container.innerHTML = '';
-
-                if (window.fullHistoryData.length === 0) {
-                    container.innerHTML = '<p class="text-muted">沒有找到任何紀錄。</p>';
-                } else {
-                    // 【關鍵修正】: 將渲染列表的邏輯加回來
-                    window.fullHistoryData.forEach((item, index) => {
-                        const date = new Date(item.date);
-                        const formattedDate = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
-                        const button = document.createElement('button');
-                        button.type = 'button';
-                        button.className = 'list-group-item list-group-item-action';
-                        button.textContent = `${formattedDate}_${item.dishName}`;
-                        button.onclick = () => showHistoryDetail(index); // 呼叫全域的 showHistoryDetail
-                        container.appendChild(button);
-                    });
-                }
-                window.showPage('history-list-page');
-            }
+            window.showPage('history-list-page');
         }
+    }
     </script>
 </body>
 </html>
