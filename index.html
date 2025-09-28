@@ -363,6 +363,21 @@
                     idName: idName,
                     displayName: displayName
                 }));
+
+                // --- NEW: 登入成功後，立即從後端獲取使用者偏好，並更新 localStorage ---
+                const preferencesResult = await callGasApi('getUserPreferences', { id_name: idName }, null); // 不顯示 loading
+                let allergens = '';
+                let style = '';
+                if (preferencesResult && preferencesResult.status === 'success' && preferencesResult.data) {
+                    allergens = preferencesResult.data.allergens || '';
+                    style = preferencesResult.data.style || '';
+                }
+                localStorage.setItem('loggedInUser', JSON.stringify({
+                    idName: idName,
+                    displayName: displayName, // 【錯誤修正】此處缺少一個逗號，導致後面的偏好設定無法被正確儲存
+                    allergens: allergens, // 包含從後端獲取的忌口資訊
+                    style: style         // 包含從後端獲取的偏好資訊
+                }));
                 updateHeaderUsername(); // 即時更新右上角使用者名稱
                 initializeApp(); // 登入成功後直接重新初始化，避免頁面重載
             }
