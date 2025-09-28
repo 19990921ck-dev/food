@@ -22,16 +22,17 @@
             <div class="form-group">
                 <label for="diet-type">飲食類型</label>
                 <select id="diet-type" class="form-select">
-                    <option value="不限">不限</option>
-                    <option value="素食">素食</option>
+                    <option value="葷食">葷食</option>
                     <option value="純素">純素</option>
-                    <option value="低碳">低碳</option>
-                    <option value="家常菜">家常菜</option>
+                    <option value="蛋奶素">蛋奶素</option>
+                    <option value="清真飲食">清真飲食</option>
+                    <option value="低過敏飲食">低過敏飲食</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="main-course">主食</label>
+                <label for="main-course">主菜</label>
                 <select id="main-course" class="form-select">
+                    <!-- 豬肉選項會由 JS 動態控制 -->
                     <option value="不限">不限</option>
                     <option value="牛">牛</option>
                     <option value="雞">雞</option>
@@ -39,17 +40,7 @@
                     <option value="鴨">鴨</option>
                     <option value="魚">魚</option>
                 </select>
-            </div>
-            <div class="form-group">
-                <label for="flavor">風味</label>
-                <select id="flavor" class="form-select">
-                    <option value="不限">不限</option>
-                    <option value="中式">中式</option>
-                    <option value="日式">日式</option>
-                    <option value="西式">西式</option>
-                    <option value="韓式">韓式</option>
-                    <option value="東南亞風味">東南亞風味</option>
-                </select>
+                <div id="main-course-message" class="form-text text-danger" style="display: none;">素食不提供主菜選項</div>
             </div>
             <div class="form-group">
                 <label for="difficulty">烹飪難度</label>
@@ -74,6 +65,7 @@
         <!-- 頁面三：結果 -->
         <div id="page3" class="page">
             <h2 id="dish-name" class="mb-4"></h2>
+            <div id="conflict-warning" class="alert alert-warning" style="display: none;"></div>
             <div class="mb-4">
                 <h4 class="mb-2"><i class="fa-solid fa-carrot me-2 text-warning"></i>精選食材</h4>
                 <ul id="ingredients-list" class="list-group"></ul>
@@ -117,6 +109,7 @@
         let recipeData = null;
         let refineCount = 0;
         let currentUserIdName = null;
+        let userPreferences = { allergens: '', style: '' }; // 用於儲存使用者的全域偏好
 
         submitBtn.addEventListener('click', () => callApiAndDisplay(false));
         refineBtn.addEventListener('click', () => callApiAndDisplay(true));
@@ -143,12 +136,11 @@
             } else {
                 const diet = document.getElementById('diet-type').value;
                 const mainCourse = document.getElementById('main-course').value;
-                const flavor = document.getElementById('flavor').value;
                 const difficulty = document.getElementById('difficulty').value;
                 const servings = document.getElementById('servings').value;
 
                 prompt = `你是一位專業的廚師。請根據以下飲食偏好，隨機為我建議一道菜。
-                飲食偏好: - 飲食類型: ${diet}, - 主食: ${mainCourse}, - 風味: ${flavor}, - 烹飪難度: ${difficulty}, - 份量: ${servings}
+                飲食偏好: - 飲食類型: ${diet}, - 主食: ${mainCourse}, - 烹飪難度: ${difficulty}, - 份量: ${servings}
                 請以繁體中文建議一道菜的菜名、所有需要的食材（包含份量）及詳細烹飪步驟。請嚴格按照以下 JSON 格式回傳，不要有任何額外的文字或解釋：
                 {"dishName": "建議的菜餚名稱", "ingredients": [{"name": "食材A", "quantity": "份量A"}], "instructions": ["步驟一", "步驟二"]}`;
             }
@@ -167,9 +159,31 @@
 
         function displayResults(data) {
             document.getElementById('dish-name').textContent = data.dishName;
+            const conflictWarning = document.getElementById('conflict-warning');
+            conflictWarning.style.display = 'none'; // 先隱藏
+
             document.getElementById('ingredients-list').innerHTML = data.ingredients.map(item => `<li class="list-group-item">${item.name} - ${item.quantity}</li>`).join('');
             document.getElementById('steps-list').innerHTML = data.instructions.map(step => `<li class="list-group-item">${step.replace(/^\d+\.\s*/, '')}</li>`).join('');
             document.getElementById('refine-input').value = '';
+
+            // 檢查是否有衝突
+            const userAllergens = userPreferences.allergens ? userPreferences.allergens.split(',').filter(item => item) : [];
+            const mainCourseSelection = document.getElementById('main-course').value;
+
+            // 檢查使用者選擇的主菜是否在忌口清單中
+            // 修改比對邏輯：從完全等於 (includes) 改為部分包含 (some)
+            const mainCourseConflict = userAllergens.find(allergen => allergen.includes(mainCourseSelection));
+
+            if (mainCourseSelection !== '不限' && mainCourseConflict) {
+                conflictWarning.textContent = `提醒：您先前的忌口名單有「${mainCourseConflict}」。`;
+                conflictWarning.style.display = 'block';
+            } else { // 如果主菜沒衝突，再檢查食材清單
+                const conflictIngredient = data.ingredients.find(ing => userAllergens.some(allergen => ing.name.includes(allergen)));
+                if (conflictIngredient) {
+                    conflictWarning.textContent = `提醒：此食譜包含「${conflictIngredient.name}」，可能與您先前的忌口偏好衝突。`;
+                    conflictWarning.style.display = 'block';
+                }
+            }
         }
 
         saveBtn.addEventListener('click', async () => {
@@ -199,17 +213,74 @@
         }
 
         // 此頁面的特定初始化邏輯
-        function initializePageSpecificFeatures() {
+        async function initializePageSpecificFeatures() {
             const loggedInUser = localStorage.getItem('loggedInUser');
             if (!loggedInUser) {
                 alert('無法識別使用者身份，將返回登入頁面。');
                 window.location.href = 'login.html';
             } else {
                 currentUserIdName = JSON.parse(loggedInUser).idName;
+                // 頁面載入時，就獲取一次最新的使用者偏好
+                await fetchUserPreferences();
             }
         }
 
-        document.addEventListener('DOMContentLoaded', initializePageSpecificFeatures);
+        // 獲取使用者偏好的函式
+        async function fetchUserPreferences() {
+            if (!currentUserIdName) return;
+            // 使用一個不安靜的 fetch，避免顯示 loading
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'getUserPreferences', id_name: currentUserIdName })
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.status === 'success' && result.data) {
+                        userPreferences = result.data;
+                    }
+                }
+            } catch (error) {
+                console.error("無法在背景獲取使用者偏好:", error);
+            }
+        }
+
+        // --- 選單連動邏輯 ---
+        const dietTypeSelect = document.getElementById('diet-type');
+        const mainCourseSelect = document.getElementById('main-course');
+        const mainCourseMessage = document.getElementById('main-course-message');
+        const porkOption = mainCourseSelect.querySelector('option[value="豬"]');
+
+        dietTypeSelect.addEventListener('change', (event) => {
+            const selectedDiet = event.target.value;
+
+            // 先重設所有狀態
+            mainCourseSelect.disabled = false;
+            mainCourseMessage.style.display = 'none';
+            if (porkOption) porkOption.style.display = ''; // 顯示豬肉選項
+
+            if (selectedDiet === '純素' || selectedDiet === '蛋奶素') {
+                // 當選擇素食時，禁用主菜選項並顯示提示
+                mainCourseSelect.value = '不限'; // 重設選項
+                mainCourseSelect.disabled = true;
+                mainCourseMessage.style.display = 'block';
+            } else if (selectedDiet === '清真飲食') {
+                // 當選擇清真時，隱藏豬肉選項
+                if (porkOption) {
+                    porkOption.style.display = 'none';
+                }
+                // 如果剛好選到豬肉，就重設
+                if (mainCourseSelect.value === '豬') {
+                    mainCourseSelect.value = '不限';
+                }
+            }
+            // 其他情況 (如葷食) 會維持重設後的預設狀態 (主菜可選，豬肉可見)
+        });
+
+        // 初始觸發一次，確保頁面載入時狀態正確
+        dietTypeSelect.dispatchEvent(new Event('change'));
     </script>
 </body>
 </html>
