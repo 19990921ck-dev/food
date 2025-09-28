@@ -2,10 +2,10 @@
  * =================================
  * Smart Kitchen - Main Application Script
  * =================================
- * This file bundles common functionalities for the web app,
- * including header injection and common interactive features.
+ * This file is the single source of truth for all shared functionalities,
+ * including header injection, API calls, and common interactive features.
  */
-
+ 
 /**
  * Injects the shared header HTML into the placeholder element.
  */
@@ -14,7 +14,7 @@ function initializeHeader() {
     if (headerPlaceholder) {
         headerPlaceholder.innerHTML = `
             <header id="app-header" class="app-header sticky-top">
-                <nav class="navbar">
+                <nav class="navbar navbar-expand">
                     <div class="container-fluid">
                         <a class="navbar-brand" href="login.html">
                             <i class="fa-solid fa-utensils"></i>
@@ -22,7 +22,7 @@ function initializeHeader() {
                         </a>
                         <div class="d-flex align-items-center ms-auto">
                             <span id="header-username" class="user-display me-2">尚未登入</span>
-                            <button class="hamburger-button" aria-label="Toggle Navigation">
+                            <button class="hamburger-button" type="button" aria-label="Toggle Navigation">
                                 <span></span>
                             </button>
                         </div>
@@ -30,7 +30,7 @@ function initializeHeader() {
                 </nav>
                 <nav id="navigation-menu" class="navigation-menu">
                     <a id="common-reset-settings-btn" href="#">重新設定偏好及忌口</a>
-                    <hr>
+                    <hr class="my-2">
                     <a id="common-logout-btn" href="#" class="text-danger">登出</a>
                 </nav>
             </header>
@@ -43,6 +43,7 @@ function initializeHeader() {
  * This should be called after the header is initialized.
  */
 function initializeCommonFeatures() {
+    // --- Element Selection ---
     const hamburgerBtn = document.querySelector('.hamburger-button');
     const navMenu = document.querySelector('.navigation-menu');
     const logoutBtn = document.getElementById('common-logout-btn');
@@ -50,6 +51,7 @@ function initializeCommonFeatures() {
     const usernameDisplay = document.getElementById('header-username');
 
     if (hamburgerBtn && navMenu) {
+        // --- Feature 1: Hamburger Menu Toggle ---
         hamburgerBtn.addEventListener('click', () => {
             navMenu.classList.toggle('is-active');
             hamburgerBtn.classList.toggle('is-active');
@@ -57,6 +59,7 @@ function initializeCommonFeatures() {
     }
 
     if (logoutBtn) {
+        // --- Feature 2: Logout ---
         logoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.removeItem('loggedInUser');
@@ -67,9 +70,15 @@ function initializeCommonFeatures() {
     if (resetSettingsBtn) {
         resetSettingsBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            if (typeof showPage === 'function') {
-                showPage('style-page');
+            // 修正：改用更可靠的 URL 路徑來判斷是否在 login.html
+            if (window.location.pathname.endsWith('/login.html') || window.location.pathname.endsWith('/')) {
+                // 如果在 login.html，直接切換頁面，避免重整
+                // 並且確認 showPage 函式確實存在
+                if (typeof showPage === 'function') {
+                    showPage('style-page');
+                }
             } else {
+                // 如果在其他頁面，跳轉回 login.html 的設定頁
                 window.location.href = 'login.html#style-page';
             }
         });
@@ -104,8 +113,11 @@ async function callGasApi(action, payload, loadingText = null) {
     const loadingTextElement = loadingOverlay ? loadingOverlay.querySelector('p') : null;
 
     if (loadingOverlay) {
-        if (loadingText && loadingTextElement) loadingTextElement.textContent = loadingText;
-        loadingOverlay.style.display = 'flex';
+        if (loadingTextElement) {
+            // Use default text if loadingText is not provided
+            loadingTextElement.textContent = loadingText || '處理中，請稍候...';
+        }
+        loadingOverlay.style.display = 'flex'; // Use 'flex' to center content
     }
 
     try {
@@ -122,15 +134,17 @@ async function callGasApi(action, payload, loadingText = null) {
 
         const result = await response.json();
 
-        // 兼容 'status' 和 'success' 兩種成功標誌
-        if (result.status === 'success' || result.success === true) {
+        // Check for a success status from the backend
+        if (result.status === 'success') {
             return result;
         } else {
+            // If the backend reports an error, throw it to be caught below
             throw new Error(result.message || '發生未知錯誤');
         }
     } catch (error) {
         console.error('API Call Failed:', error);
-        alert(`操作失敗：${error.message}`); // 使用 alert 作為通用錯誤提示
+        // Use a more generic alert for user-facing errors
+        alert(`操作失敗：${error.message}`);
         return null;
     } finally {
         if (loadingOverlay) loadingOverlay.style.display = 'none';
@@ -141,4 +155,9 @@ async function callGasApi(action, payload, loadingText = null) {
 document.addEventListener('DOMContentLoaded', () => {
     initializeHeader();
     initializeCommonFeatures();
+
+    // Check for and execute page-specific initialization functions
+    if (typeof initializePage === 'function') {
+        initializePage();
+    }
 });
