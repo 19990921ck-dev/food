@@ -31,7 +31,7 @@ function initializeHeader() {
                         </div>
                     </div>
                 </nav>
-                <nav id="navigation-menu" class="navigation-menu">
+                <nav id="navigation-menu" class="navigation-menu ">
                     <a id="common-daily-recommendation-btn" href="#">每日推薦</a>
                     <a href="Ingredient_upload.html">食材上傳</a>
                     <a href="identification.html">料理辨識</a>
@@ -254,4 +254,3 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize all common interactive elements
     initializeCommonFeatures();
 });
-
