@@ -11,7 +11,7 @@
  */
 function initializeHeader() {
     // 修正：根據 config.js 中的 BASE_PATH 決定連結路徑
-    const homeUrl = (typeof BASE_PATH !== 'undefined' && BASE_PATH) ? `${BASE_PATH}index.html` : 'index.html';
+    const homeUrl = (typeof food !== 'undefined' && food) ? `${food}index.html` : 'index.html';
 
     const headerPlaceholder = document.getElementById('header-placeholder');
     if (headerPlaceholder) {
@@ -178,3 +178,4 @@ document.addEventListener('DOMContentLoaded', () => {
  
     initializeCommonFeatures();
 });
+
