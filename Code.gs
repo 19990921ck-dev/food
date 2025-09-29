@@ -315,14 +315,14 @@ function handleGetAiRecipe(payload) {
   const preferences = getUserPreferences(id_name);
   let conflictMessage = null;
 
-  // 僅在 "食材上傳" 流程中進行衝突檢測
+  // 僅在 "食材辨識" 流程中進行衝突檢測
   if (action === 'createFromIngredients' && imageData && imageData.length > 0) {
     const userAllergens = preferences.allergens ? preferences.allergens.split(',').map(s => s.trim()).filter(Boolean) : [];
     if (userAllergens.length > 0) {
       // 步驟 1: 讓 AI 辨識圖片中的主要食材
       const identificationPrompt = "請辨識這張圖片中的主要食材是什麼，請只回傳食材的中文名稱，用逗號分隔，例如：'豬肉, 青椒, 洋蔥'。";
       try {
-        const identifiedIngredientsText = callGeminiAPI(identificationPrompt, imageData, true); // true 表示這是純文字回應
+        const identifiedIngredientsText = callGeminiAPI(identificationPrompt, imageData, true); // true 表示這是純文字回應        
         const identifiedIngredients = identifiedIngredientsText.split(',').map(s => s.trim());
 
         // 步驟 2: 比對忌口清單
@@ -332,7 +332,7 @@ function handleGetAiRecipe(payload) {
           conflictMessage = `提醒：您上傳的食材中可能包含「${conflicts.join(', ')}」，這與您設定的忌口偏好衝突，請多加注意。`;
         }
       } catch (e) {
-        Logger.log(`在食材上傳流程中，辨識食材時發生錯誤: ${e.message}`);
+        Logger.log(`在食材辨識流程中，辨識食材時發生錯誤: ${e.message}`);
         // 辨識失敗不中斷流程，繼續生成食譜
       }
     }
@@ -388,7 +388,7 @@ function createUserSheet(id_name) {
   const defaultSheet = newSpreadsheet.getSheetByName('Sheet1');
   if (defaultSheet) newSpreadsheet.deleteSheet(defaultSheet);
 
-  const sheetNames = ["每日推薦", "食材上傳", "料理辨識", "選項推薦"];
+  const sheetNames = ["每日推薦", "食材辨識", "料理辨識", "選項推薦"];
   sheetNames.forEach(name => {
     const sheet = newSpreadsheet.insertSheet(name);
     sheet.getRange("A1:B1").setValues([['date', 'dish']]);
